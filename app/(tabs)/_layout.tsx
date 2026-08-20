@@ -1,0 +1,12 @@
+import React from 'react';
+import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
+import { useColors } from '@/hooks/useColors';
+import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { isLiquidGlassAvailable } from 'expo-glass-effect';
+import { Tabs } from 'expo-router';
+import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
+import { SymbolView } from 'expo-symbols';
+function NativeTabLayout() { return <NativeTabs><NativeTabs.Trigger name="index"><Icon sf={{ default: 'house', selected: 'house.fill' }} /><Label>الرئيسية</Label></NativeTabs.Trigger><NativeTabs.Trigger name="schools"><Icon sf={{ default: 'building.2', selected: 'building.2.fill' }} /><Label>المدارس</Label></NativeTabs.Trigger><NativeTabs.Trigger name="visits"><Icon sf={{ default: 'camera', selected: 'camera.fill' }} /><Label>الزيارات</Label></NativeTabs.Trigger><NativeTabs.Trigger name="tasks"><Icon sf={{ default: 'checklist', selected: 'checklist' }} /><Label>الأعمال</Label></NativeTabs.Trigger></NativeTabs>; }
+function ClassicTabLayout() { const c = useColors(); const dark = useColorScheme() === 'dark'; const ios = Platform.OS === 'ios'; return <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: c.primary, tabBarInactiveTintColor: c.mutedForeground, tabBarStyle: { position: 'absolute', backgroundColor: ios ? 'transparent' : c.card, borderTopWidth: 1, borderTopColor: c.border, elevation: 0, ...(Platform.OS === 'web' ? { height: 84 } : {}) }, tabBarBackground: () => ios ? <BlurView intensity={100} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: c.card }]} /> }}><Tabs.Screen name="index" options={{ title: 'الرئيسية', tabBarIcon: ({ color }) => ios ? <SymbolView name="house" tintColor={color} size={23} /> : <Feather name="home" size={21} color={color} /> }} /><Tabs.Screen name="schools" options={{ title: 'المدارس', tabBarIcon: ({ color }) => <Feather name="home" size={21} color={color} /> }} /><Tabs.Screen name="visits" options={{ title: 'الزيارات', tabBarIcon: ({ color }) => <Feather name="camera" size={21} color={color} /> }} /><Tabs.Screen name="tasks" options={{ title: 'الأعمال', tabBarIcon: ({ color }) => <Feather name="check-square" size={21} color={color} /> }} /></Tabs>; }
+export default function TabLayout() { return isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />; }
