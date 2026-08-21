@@ -18,15 +18,16 @@
 2. شغّل المشروع باستخدام Expo.
 3. امسح رمز QR الظاهر في الطرفية أو في معاينة المشروع.
 
-هذا المستودع يحتوي على مصدر التطبيق، ويحتوي أيضاً على GitHub Action لبناء ملف APK تلقائياً عند كل تحديث على فرع `main`.
+هذا المستودع يحتوي على مصدر التطبيق، ومعه ملف Workflow جاهز لبناء APK داخل GitHub Actions. يحتاج تفعيل Workflow في حساب GitHub قبل تشغيله.
 
 ## تنزيل ملف APK من GitHub
 
-1. افتح تبويب **Actions** في المستودع.
-2. اختر **Build Android APK**.
-3. افتح آخر عملية ناجحة.
-4. من قسم **Artifacts** نزّل `edu-supervision-visits-apk`.
-5. فك الضغط وثبّت ملف APK على هاتف Android.
+1. أضف ملف `.github/workflows/build-apk.yml` إلى المستودع من الملف المرجعي الموجود في المشروع.
+2. افتح تبويب **Actions** في المستودع.
+3. اختر **Build Android APK** ثم **Run workflow**.
+4. افتح آخر عملية ناجحة.
+5. من قسم **Artifacts** نزّل `edu-supervision-visits-apk`.
+6. فك الضغط وثبّت ملف APK على هاتف Android.
 
 يمكن تشغيل البناء يدوياً من زر **Run workflow** داخل تبويب Actions.
 
