@@ -16,7 +16,11 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "package": "com.alshamiasc3.edusupervisionvisits",
+      "versionCode": 1,
+      "permissions": ["CAMERA"]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
