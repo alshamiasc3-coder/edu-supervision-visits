@@ -22,7 +22,7 @@
 
 ## تنزيل ملف APK من GitHub
 
-1. أضف ملف `.github/workflows/build-apk.yml` إلى المستودع من الملف المرجعي الموجود في المشروع.
+1. أضف ملف `.github/workflows/build-apk.yml` إلى المستودع من الملف المرجعي الموجود في المشروع. إذا كان الملف موجوداً بالفعل، تأكد من أن خطوة **Generate Android project** تستخدم `CI=1` و`--no-install`.
 2. افتح تبويب **Actions** في المستودع.
 3. اختر **Build Android APK** ثم **Run workflow**.
 4. افتح آخر عملية ناجحة.
