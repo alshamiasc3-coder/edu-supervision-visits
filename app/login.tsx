@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,17 +16,31 @@ import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, ready, isAuthenticated, currentUser } = useAuth();
+
+  const {
+    login,
+    ready,
+    isAuthenticated,
+  } = useAuth();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // الانتقال إلى التطبيق الرئيسي
-  const goToApp = () => {
-    router.replace('/(tabs)');
-  };
+  /*
+   * إذا كان المستخدم مسجل الدخول أصلًا،
+   * لا نعرض شاشة تسجيل الدخول.
+   * ننقله مباشرة إلى التطبيق الرئيسي.
+   */
+  useEffect(() => {
+    if (ready && isAuthenticated) {
+      router.replace('/');
+    }
+  }, [ready, isAuthenticated, router]);
 
+  /*
+   * تنفيذ تسجيل الدخول
+   */
   const handleLogin = async () => {
     const cleanUsername = username.trim();
 
@@ -54,16 +68,11 @@ export default function LoginScreen() {
         return;
       }
 
-      Alert.alert(
-        'تم تسجيل الدخول',
-        'تم تسجيل الدخول بنجاح.',
-        [
-          {
-            text: 'متابعة',
-            onPress: goToApp,
-          },
-        ]
-      );
+      /*
+       * بعد نجاح تسجيل الدخول:
+       * نذهب مباشرة إلى التطبيق.
+       */
+      router.replace('/');
     } catch (error) {
       console.error('Login error:', error);
 
@@ -76,7 +85,9 @@ export default function LoginScreen() {
     }
   };
 
-  // انتظار تحميل نظام الحسابات
+  /*
+   * انتظار تحميل حالة الحساب
+   */
   if (!ready) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -89,37 +100,26 @@ export default function LoginScreen() {
     );
   }
 
-  // إذا كان المستخدم مسجل الدخول بالفعل
-  if (isAuthenticated && currentUser) {
+  /*
+   * إذا كان المستخدم مسجلًا بالفعل،
+   * ننتظر AuthGuard / useEffect
+   * لتنفيذ الانتقال.
+   */
+  if (isAuthenticated) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.title}>
-            تم تسجيل الدخول
-          </Text>
+      <SafeAreaView style={styles.centered}>
+        <ActivityIndicator size="large" />
 
-          <Text style={styles.welcome}>
-            مرحبًا، {currentUser.fullName}
-          </Text>
-
-          <Text style={styles.role}>
-            الدور: {currentUser.role}
-          </Text>
-
-          <Pressable
-            style={styles.button}
-            onPress={goToApp}
-          >
-            <Text style={styles.buttonText}>
-              متابعة
-            </Text>
-          </Pressable>
-        </View>
+        <Text style={styles.loadingText}>
+          جاري فتح التطبيق...
+        </Text>
       </SafeAreaView>
     );
   }
 
-  // شاشة تسجيل الدخول
+  /*
+   * شاشة تسجيل الدخول
+   */
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -131,6 +131,7 @@ export default function LoginScreen() {
         }
       >
         <View style={styles.card}>
+
           <Text style={styles.logo}>
             إشراف تربوي
           </Text>
@@ -144,6 +145,7 @@ export default function LoginScreen() {
           </Text>
 
           <View style={styles.form}>
+
             <Text style={styles.label}>
               اسم المستخدم
             </Text>
@@ -187,16 +189,20 @@ export default function LoginScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator
+                  color="#ffffff"
+                />
               ) : (
                 <Text style={styles.buttonText}>
                   دخول
                 </Text>
               )}
             </Pressable>
+
           </View>
 
           <View style={styles.demoBox}>
+
             <Text style={styles.demoTitle}>
               حسابات الاختبار
             </Text>
@@ -212,7 +218,9 @@ export default function LoginScreen() {
             <Text style={styles.demoHint}>
               هذه الحسابات للتطوير والاختبار فقط.
             </Text>
+
           </View>
+
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -352,21 +360,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: 11,
     color: '#888',
-    marginTop: 8,
-  },
-
-  welcome: {
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 12,
-  },
-
-  role: {
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#666',
     marginTop: 8,
   },
 });
