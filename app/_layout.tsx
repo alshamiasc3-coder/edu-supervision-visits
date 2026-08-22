@@ -29,6 +29,7 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { Feather } from '@expo/vector-icons';
+
 import {
   Stack,
   useRouter,
@@ -38,23 +39,30 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 
 import { StoreProvider } from '@/context/AppContext';
+
 import {
   AuthProvider,
   useAuth,
 } from '@/context/AuthContext';
 
+
+/*
+ * منع إخفاء شاشة البداية
+ * حتى يتم تحميل الخطوط ونظام الحسابات.
+ */
 SplashScreen.preventAutoHideAsync();
 
+
+/*
+ * React Query Client
+ */
 const queryClient = new QueryClient();
 
-/**
- * مسؤول عن حماية مسارات التطبيق
+
+/*
+ * حارس المصادقة
  *
- * إذا كان المستخدم غير مسجل:
- *     → /login
- *
- * إذا كان المستخدم مسجل وحاول فتح /login:
- *     → /(tabs)
+ * مسؤول عن تحديد الصفحة التي يجب أن يراها المستخدم.
  */
 function AuthGuard() {
   const router = useRouter();
@@ -65,28 +73,69 @@ function AuthGuard() {
     isAuthenticated,
   } = useAuth();
 
+
   useEffect(() => {
-    // لا نقوم بأي توجيه قبل انتهاء تحميل حالة الحساب
+    /*
+     * لا نقرر مسار المستخدم
+     * قبل انتهاء تحميل حالة الحساب.
+     */
     if (!ready) {
       return;
     }
 
+
+    /*
+     * أول جزء من المسار الحالي.
+     *
+     * مثال:
+     *
+     * /login
+     * → login
+     *
+     * /
+     * → قد يكون فارغًا أو جزءًا من المسار الحالي
+     */
     const firstSegment = segments[0];
 
-    // هل المستخدم داخل صفحة تسجيل الدخول؟
-    const isLoginScreen = firstSegment === 'login';
 
-    // المستخدم غير مسجل الدخول
-    if (!isAuthenticated && !isLoginScreen) {
+    /*
+     * هل المستخدم داخل صفحة تسجيل الدخول؟
+     */
+    const isLoginScreen =
+      firstSegment === 'login';
+
+
+    /*
+     * المستخدم غير مسجل الدخول
+     *
+     * وإذا كان يحاول الوصول إلى أي صفحة
+     * غير صفحة تسجيل الدخول،
+     * نرسله إلى /login.
+     */
+    if (
+      !isAuthenticated &&
+      !isLoginScreen
+    ) {
       router.replace('/login');
       return;
     }
 
-    // المستخدم مسجل الدخول ويحاول فتح تسجيل الدخول
-    if (isAuthenticated && isLoginScreen) {
-      router.replace('/(tabs)');
+
+    /*
+     * المستخدم مسجل الدخول
+     *
+     * لكنه يحاول فتح /login.
+     *
+     * نرسله مباشرة إلى الصفحة الرئيسية.
+     */
+    if (
+      isAuthenticated &&
+      isLoginScreen
+    ) {
+      router.replace('/');
       return;
     }
+
   }, [
     ready,
     isAuthenticated,
@@ -94,48 +143,96 @@ function AuthGuard() {
     router,
   ]);
 
+
+  /*
+   * AuthGuard لا يعرض واجهة.
+   * وظيفته فقط التحكم في التنقل.
+   */
   return null;
 }
 
+
+/*
+ * Root Layout
+ */
 export default function RootLayout() {
+
+  /*
+   * تحميل الخطوط.
+   */
   const [
     fontsLoaded,
     fontError,
   ] = useFonts({
+
     Inter_400Regular,
+
     Inter_500Medium,
+
     Inter_600SemiBold,
+
     Inter_700Bold,
+
     Feather: Feather.font,
+
   });
 
+
+  /*
+   * إخفاء Splash Screen
+   * بعد تحميل الخطوط.
+   */
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+
+    if (
+      fontsLoaded ||
+      fontError
+    ) {
       SplashScreen.hideAsync();
     }
+
   }, [
     fontsLoaded,
     fontError,
   ]);
 
-  if (!fontsLoaded && !fontError) {
+
+  /*
+   * انتظار تحميل الخطوط.
+   */
+  if (
+    !fontsLoaded &&
+    !fontError
+  ) {
     return null;
   }
 
+
   return (
     <SafeAreaProvider>
+
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
+
+        <QueryClientProvider
+          client={queryClient}
+        >
+
           <StoreProvider>
 
             <AuthProvider>
 
-              {/* حماية وتنظيم مسارات التطبيق */}
+              {/*
+               * نظام حماية المسارات
+               */}
               <AuthGuard />
 
+
               <GestureHandlerRootView
-                style={{ flex: 1 }}
+                style={{
+                  flex: 1,
+                }}
               >
+
                 <KeyboardProvider>
 
                   <Stack
@@ -145,13 +242,17 @@ export default function RootLayout() {
                   />
 
                 </KeyboardProvider>
+
               </GestureHandlerRootView>
 
             </AuthProvider>
 
           </StoreProvider>
+
         </QueryClientProvider>
+
       </ErrorBoundary>
+
     </SafeAreaProvider>
   );
 }
