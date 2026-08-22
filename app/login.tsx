@@ -22,11 +22,19 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // الانتقال إلى التطبيق الرئيسي
+  const goToApp = () => {
+    router.replace('/(tabs)');
+  };
+
   const handleLogin = async () => {
     const cleanUsername = username.trim();
 
     if (!cleanUsername || !password) {
-      Alert.alert('بيانات ناقصة', 'يرجى إدخال اسم المستخدم وكلمة المرور.');
+      Alert.alert(
+        'بيانات ناقصة',
+        'يرجى إدخال اسم المستخدم وكلمة المرور.'
+      );
       return;
     }
 
@@ -39,64 +47,107 @@ export default function LoginScreen() {
       });
 
       if (!success) {
-        Alert.alert('فشل تسجيل الدخول', 'اسم المستخدم أو كلمة المرور غير صحيحة.');
+        Alert.alert(
+          'فشل تسجيل الدخول',
+          'اسم المستخدم أو كلمة المرور غير صحيحة.'
+        );
         return;
       }
 
-      Alert.alert('تم تسجيل الدخول', 'تم تسجيل الدخول بنجاح.', [
-        {
-          text: 'متابعة',
-          onPress: () => router.back(),
-        },
-      ]);
+      Alert.alert(
+        'تم تسجيل الدخول',
+        'تم تسجيل الدخول بنجاح.',
+        [
+          {
+            text: 'متابعة',
+            onPress: goToApp,
+          },
+        ]
+      );
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('خطأ', 'حدث خطأ أثناء تسجيل الدخول.');
+
+      Alert.alert(
+        'خطأ',
+        'حدث خطأ أثناء تسجيل الدخول.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // انتظار تحميل نظام الحسابات
   if (!ready) {
     return (
       <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>جاري تحميل نظام الحسابات...</Text>
+
+        <Text style={styles.loadingText}>
+          جاري تحميل نظام الحسابات...
+        </Text>
       </SafeAreaView>
     );
   }
 
+  // إذا كان المستخدم مسجل الدخول بالفعل
   if (isAuthenticated && currentUser) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.title}>تم تسجيل الدخول</Text>
-          <Text style={styles.welcome}>مرحبًا، {currentUser.fullName}</Text>
-          <Text style={styles.role}>الدور: {currentUser.role}</Text>
+          <Text style={styles.title}>
+            تم تسجيل الدخول
+          </Text>
 
-          <Pressable style={styles.button} onPress={() => router.back()}>
-            <Text style={styles.buttonText}>متابعة</Text>
+          <Text style={styles.welcome}>
+            مرحبًا، {currentUser.fullName}
+          </Text>
+
+          <Text style={styles.role}>
+            الدور: {currentUser.role}
+          </Text>
+
+          <Pressable
+            style={styles.button}
+            onPress={goToApp}
+          >
+            <Text style={styles.buttonText}>
+              متابعة
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
+  // شاشة تسجيل الدخول
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboard}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={
+          Platform.OS === 'ios'
+            ? 'padding'
+            : undefined
+        }
       >
         <View style={styles.card}>
-          <Text style={styles.logo}>إشراف تربوي</Text>
-          <Text style={styles.title}>تسجيل الدخول</Text>
+          <Text style={styles.logo}>
+            إشراف تربوي
+          </Text>
+
+          <Text style={styles.title}>
+            تسجيل الدخول
+          </Text>
+
           <Text style={styles.subtitle}>
             نظام إدارة الإشراف والمتابعة المدرسية
           </Text>
 
           <View style={styles.form}>
-            <Text style={styles.label}>اسم المستخدم</Text>
+            <Text style={styles.label}>
+              اسم المستخدم
+            </Text>
+
             <TextInput
               value={username}
               onChangeText={setUsername}
@@ -109,7 +160,10 @@ export default function LoginScreen() {
               textAlign="right"
             />
 
-            <Text style={styles.label}>كلمة المرور</Text>
+            <Text style={styles.label}>
+              كلمة المرور
+            </Text>
+
             <TextInput
               value={password}
               onChangeText={setPassword}
@@ -125,22 +179,36 @@ export default function LoginScreen() {
             />
 
             <Pressable
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[
+                styles.button,
+                loading && styles.buttonDisabled,
+              ]}
               onPress={handleLogin}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.buttonText}>دخول</Text>
+                <Text style={styles.buttonText}>
+                  دخول
+                </Text>
               )}
             </Pressable>
           </View>
 
           <View style={styles.demoBox}>
-            <Text style={styles.demoTitle}>حسابات الاختبار</Text>
-            <Text style={styles.demoText}>admin / admin123</Text>
-            <Text style={styles.demoText}>supervisor / supervisor123</Text>
+            <Text style={styles.demoTitle}>
+              حسابات الاختبار
+            </Text>
+
+            <Text style={styles.demoText}>
+              admin / admin123
+            </Text>
+
+            <Text style={styles.demoText}>
+              supervisor / supervisor123
+            </Text>
+
             <Text style={styles.demoHint}>
               هذه الحسابات للتطوير والاختبار فقط.
             </Text>
@@ -152,15 +220,30 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f6f8' },
-  keyboard: { flex: 1, justifyContent: 'center', padding: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: '#f4f6f8',
+  },
+
+  keyboard: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f4f6f8',
   },
-  loadingText: { marginTop: 12, fontSize: 15, color: '#555' },
+
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#555',
+  },
+
   card: {
     width: '100%',
     maxWidth: 460,
@@ -172,8 +255,12 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
   },
+
   logo: {
     textAlign: 'center',
     fontSize: 26,
@@ -181,6 +268,7 @@ const styles = StyleSheet.create({
     color: '#1f4e79',
     marginBottom: 8,
   },
+
   title: {
     textAlign: 'center',
     fontSize: 24,
@@ -188,6 +276,7 @@ const styles = StyleSheet.create({
     color: '#222',
     marginBottom: 8,
   },
+
   subtitle: {
     textAlign: 'center',
     fontSize: 14,
@@ -195,7 +284,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 22,
   },
-  form: { gap: 10 },
+
+  form: {
+    gap: 10,
+  },
+
   label: {
     textAlign: 'right',
     fontSize: 14,
@@ -203,6 +296,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 4,
   },
+
   input: {
     height: 50,
     borderWidth: 1,
@@ -213,6 +307,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#222',
   },
+
   button: {
     height: 50,
     borderRadius: 10,
@@ -221,32 +316,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#1f4e79',
     marginTop: 12,
   },
-  buttonDisabled: { opacity: 0.65 },
-  buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+
+  buttonDisabled: {
+    opacity: 0.65,
+  },
+
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
   demoBox: {
     marginTop: 24,
     padding: 14,
     borderRadius: 10,
     backgroundColor: '#f1f5f9',
   },
+
   demoTitle: {
     textAlign: 'right',
     fontWeight: '700',
     color: '#333',
     marginBottom: 6,
   },
+
   demoText: {
     textAlign: 'right',
     fontSize: 13,
     color: '#555',
     marginTop: 3,
   },
+
   demoHint: {
     textAlign: 'right',
     fontSize: 11,
     color: '#888',
     marginTop: 8,
   },
+
   welcome: {
     textAlign: 'center',
     fontSize: 18,
@@ -254,6 +362,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 12,
   },
+
   role: {
     textAlign: 'center',
     fontSize: 14,
