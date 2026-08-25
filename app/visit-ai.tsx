@@ -46,17 +46,18 @@ function normalize(value: string = '') {
 
 /* =========================================================
    DETECT VISIT TYPE
+   يعتمد على الإجراءات فقط
 ========================================================= */
 
 function detectVisitType(
-  reason: string,
   procedure: string
 ): VisitType {
-  const text = normalize(
-    `${reason} ${procedure}`
-  );
+  const text = normalize(procedure);
 
-  // النظافة والخدمات المدرسية
+  /* =====================================================
+     النظافة والخدمات المدرسية
+  ===================================================== */
+
   if (
     text.includes('خدمه') ||
     text.includes('الخدمه') ||
@@ -71,7 +72,10 @@ function detectVisitType(
     return 'cleanliness';
   }
 
-  // التحصيل الدراسي والطلاب
+  /* =====================================================
+     التحصيل الدراسي والطلاب
+  ===================================================== */
+
   if (
     text.includes('تحصيل') ||
     text.includes('التحصيل') ||
@@ -95,7 +99,10 @@ function detectVisitType(
     return 'academic';
   }
 
-  // الحضور والانصراف والدوام
+  /* =====================================================
+     الحضور والانصراف والدوام
+  ===================================================== */
+
   if (
     text.includes('دوام') ||
     text.includes('الدوام') ||
@@ -110,7 +117,10 @@ function detectVisitType(
     return 'attendance';
   }
 
-  // المعلمون والخطط الدراسية
+  /* =====================================================
+     المعلمون والخطط الدراسية
+  ===================================================== */
+
   if (
     text.includes('مدرس') ||
     text.includes('المدرس') ||
@@ -130,7 +140,10 @@ function detectVisitType(
     return 'teachers';
   }
 
-  // الانضباط والسلوك
+  /* =====================================================
+     الانضباط والسلوك
+  ===================================================== */
+
   if (
     text.includes('انضباط') ||
     text.includes('الانضباط') ||
@@ -144,7 +157,10 @@ function detectVisitType(
     return 'behavior';
   }
 
-  // الإدارة والشؤون الإدارية
+  /* =====================================================
+     الإدارة والشؤون الإدارية
+  ===================================================== */
+
   if (
     text.includes('اداري') ||
     text.includes('اداريه') ||
@@ -163,17 +179,13 @@ function detectVisitType(
 
 /* =========================================================
    BUILD AI DRAFT
+   لا يوجد سبب زيارة هنا
 ========================================================= */
 
 function buildDraft(
-  reason: string,
   procedure: string,
   type: VisitType
 ) {
-  const cleanReason =
-    reason.trim() ||
-    'متابعة واقع العمل في المدرسة';
-
   const cleanProcedure =
     procedure.trim() ||
     'متابعة الإجراءات المرتبطة بموضوع الزيارة';
@@ -189,7 +201,7 @@ function buildDraft(
 
     case 'cleanliness':
       generatedNotes =
-        `تمت زيارة المدرسة لغرض ${cleanReason}، حيث تم الاطلاع على مستوى نظافة الصفوف والمرافق المدرسية ومتابعة الإجراءات المتخذة للمحافظة على نظافة البيئة المدرسية، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة.`;
+        `تمت زيارة المدرسة للاطلاع على واقع نظافة الصفوف والمرافق المدرسية ومتابعة الإجراءات المتخذة للمحافظة على نظافة البيئة المدرسية، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة.`;
 
       generatedRecommendations =
         `1. متابعة مستوى نظافة الصفوف والمرافق المدرسية بصورة مستمرة.\n\n` +
@@ -209,14 +221,14 @@ function buildDraft(
 
     case 'academic':
       generatedNotes =
-        `تمت زيارة المدرسة لغرض ${cleanReason}، حيث تم الاطلاع على مستوى التحصيل الدراسي للطلبة ومتابعة واقع الأداء التعليمي في المادة أو المجال المعني، مع رصد الملاحظات المتعلقة بمستوى الطلبة والإجراءات المتخذة لمعالجة جوانب الضعف وتحسين مستوى التعلم.`;
+        `تمت زيارة المدرسة للاطلاع على مستوى التحصيل الدراسي للطلبة ومتابعة واقع الأداء التعليمي في المادة أو المجال المعني، مع رصد الملاحظات المتعلقة بمستوى الطلبة والإجراءات المتخذة لمعالجة جوانب الضعف وتحسين مستوى التعلم.`;
 
       generatedRecommendations =
         `1. متابعة مستوى تحصيل الطلبة في المادة أو المجال المحدد.\n\n` +
         `2. تحديد الطلبة الذين يحتاجون إلى دعم تعليمي إضافي ووضع إجراءات مناسبة لمعالجة جوانب الضعف.\n\n` +
         `3. متابعة تنفيذ الإجراءات التعليمية والعلاجية المتخذة من قبل المدرسة.\n\n` +
         `4. التأكد من قياس مستوى التحسن بصورة دورية وتوثيق النتائج.\n\n` +
-        `5. متابعة مستوى تنفيذ الإجراء المحدد: ${cleanProcedure}`;
+        `5. متابعة تنفيذ الإجراء المحدد: ${cleanProcedure}`;
 
       generatedFollowUp =
         `تتم متابعة مستوى تحصيل الطلبة خلال الزيارة القادمة، مع التحقق من أثر الإجراءات العلاجية والتعليمية المتخذة وقياس مستوى التحسن وتوثيق النتائج الجديدة.`;
@@ -228,7 +240,7 @@ function buildDraft(
 
     case 'attendance':
       generatedNotes =
-        `تمت زيارة المدرسة لغرض ${cleanReason}، حيث تم الاطلاع على سجلات الحضور والانصراف والدوام ومتابعة مدى انتظام الكوادر التعليمية والإدارية، مع رصد الملاحظات التي تحتاج إلى معالجة وفق التعليمات والإجراءات المعتمدة.`;
+        `تمت زيارة المدرسة للاطلاع على سجلات الحضور والانصراف والدوام ومتابعة مدى انتظام الكوادر التعليمية والإدارية، مع رصد الملاحظات التي تحتاج إلى معالجة وفق التعليمات والإجراءات المعتمدة.`;
 
       generatedRecommendations =
         `1. متابعة سجلات الحضور والانصراف بصورة مستمرة.\n\n` +
@@ -247,7 +259,7 @@ function buildDraft(
 
     case 'teachers':
       generatedNotes =
-        `تمت زيارة المدرسة لغرض ${cleanReason}، حيث تم الاطلاع على واقع أداء الكوادر التعليمية ومتابعة تنفيذ الخطط التعليمية والسجلات الخاصة بالمعلمين، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة.`;
+        `تمت زيارة المدرسة للاطلاع على واقع أداء الكوادر التعليمية ومتابعة تنفيذ الخطط التعليمية والسجلات الخاصة بالمعلمين، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة.`;
 
       generatedRecommendations =
         `1. متابعة تنفيذ الخطط التعليمية والسجلات الخاصة بالكوادر التعليمية.\n\n` +
@@ -266,7 +278,7 @@ function buildDraft(
 
     case 'behavior':
       generatedNotes =
-        `تمت زيارة المدرسة لغرض ${cleanReason}، حيث تم الاطلاع على مستوى الانضباط والسلوك المدرسي ومتابعة الإجراءات المتخذة لمعالجة الحالات والملاحظات المسجلة، مع التأكيد على تطبيق التعليمات التربوية المعتمدة.`;
+        `تمت زيارة المدرسة للاطلاع على مستوى الانضباط والسلوك المدرسي ومتابعة الإجراءات المتخذة لمعالجة الحالات والملاحظات المسجلة، مع التأكيد على تطبيق التعليمات التربوية المعتمدة.`;
 
       generatedRecommendations =
         `1. متابعة مستوى الانضباط والسلوك داخل المدرسة بصورة مستمرة.\n\n` +
@@ -285,7 +297,7 @@ function buildDraft(
 
     case 'administration':
       generatedNotes =
-        `تمت زيارة المدرسة لغرض ${cleanReason}، حيث تم الاطلاع على واقع العمل الإداري ومتابعة السجلات والإجراءات الإدارية المتخذة، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة وفق التعليمات وخطة العمل المعتمدة.`;
+        `تمت زيارة المدرسة للاطلاع على واقع العمل الإداري ومتابعة السجلات والإجراءات الإدارية المتخذة، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة وفق التعليمات وخطة العمل المعتمدة.`;
 
       generatedRecommendations =
         `1. متابعة تنفيذ الإجراءات الإدارية المرتبطة بموضوع الزيارة.\n\n` +
@@ -305,7 +317,7 @@ function buildDraft(
     case 'general':
     default:
       generatedNotes =
-        `تمت زيارة المدرسة لغرض ${cleanReason}، حيث تم الاطلاع على واقع العمل ومتابعة الإجراءات المتخذة والاطلاع على مستوى تنفيذها، مع رصد الملاحظات التي تحتاج إلى متابعة ومعالجة وفق خطة العمل المعتمدة.`;
+        `تمت زيارة المدرسة للاطلاع على واقع العمل ومتابعة الإجراءات المتخذة ومستوى تنفيذها، مع رصد الملاحظات التي تحتاج إلى متابعة ومعالجة وفق خطة العمل المعتمدة.`;
 
       generatedRecommendations =
         `1. متابعة تنفيذ الإجراءات المرتبطة بموضوع الزيارة.\n\n` +
@@ -338,9 +350,6 @@ export default function VisitAI() {
     visitId?: string;
     schoolName?: string;
 
-    reason?: string;
-    visitReason?: string;
-
     procedure?: string;
     actions?: string;
 
@@ -351,21 +360,6 @@ export default function VisitAI() {
   }>();
 
   /* =======================================================
-     READ REASON
-  ======================================================= */
-
-  const initialReason = useMemo(() => {
-    return (
-      params.reason ||
-      params.visitReason ||
-      ''
-    ).toString();
-  }, [
-    params.reason,
-    params.visitReason,
-  ]);
-
-  /* =======================================================
      READ PROCEDURE
   ======================================================= */
 
@@ -373,16 +367,14 @@ export default function VisitAI() {
     return (
       params.procedure ||
       params.actions ||
+      params.aiActions ||
       ''
     ).toString();
   }, [
     params.procedure,
     params.actions,
+    params.aiActions,
   ]);
-
-  const [reason] = useState(
-    initialReason
-  );
 
   const [procedure, setProcedure] =
     useState(initialProcedure);
@@ -400,19 +392,19 @@ export default function VisitAI() {
   const [notes, setNotes] =
     useState(
       params.aiNotes?.toString() ||
-        'اضغط على «إعداد الصياغة الذكية» لإنشاء الملاحظات المناسبة لموضوع الزيارة.'
+        'اضغط على «إعداد الصياغة الذكية» لإنشاء الملاحظات المناسبة للإجراءات المحددة.'
     );
 
   const [recommendations, setRecommendations] =
     useState(
       params.aiRecommendations?.toString() ||
-        'سيتم إنشاء التوصيات والإجراءات المقترحة بناءً على سبب الزيارة والإجراءات المحددة.'
+        'سيتم إنشاء التوصيات والإجراءات المقترحة بناءً على الإجراءات المحددة.'
     );
 
   const [followUp, setFollowUp] =
     useState(
       params.aiFollowUp?.toString() ||
-        'سيتم إنشاء خطة متابعة مرتبطة بموضوع الزيارة بعد إعداد الصياغة الذكية.'
+        'سيتم إنشاء خطة متابعة مرتبطة بالإجراءات بعد إعداد الصياغة الذكية.'
     );
 
   const [loading, setLoading] =
@@ -434,23 +426,25 @@ export default function VisitAI() {
 
     const type =
       detectVisitType(
-        reason,
         currentProcedure
       );
 
     const draft =
       buildDraft(
-        reason,
         currentProcedure,
         type
       );
 
     setGeneratedType(type);
 
-    setNotes(draft.notes);
+    setNotes(
+      draft.notes
+    );
+
     setRecommendations(
       draft.recommendations
     );
+
     setFollowUp(
       draft.followUp
     );
@@ -461,16 +455,10 @@ export default function VisitAI() {
   /* =======================================================
      USE DRAFT
      
-     IMPORTANT:
-     نرسل سبب الزيارة إلى visit-form
-     حتى لا يختفي بعد الضغط على
-     "استخدام صياغتي في الزيارة".
+     لا نرسل سبب الزيارة نهائيًا.
   ======================================================= */
 
   const useDraft = () => {
-    const finalReason =
-      reason.trim();
-
     const finalActions =
       actions.trim() ||
       procedure.trim();
@@ -479,26 +467,29 @@ export default function VisitAI() {
       pathname: '/visit-form',
 
       params: {
-        /* بيانات الزيارة الأصلية */
         visitId:
           params.visitId?.toString() || '',
 
         schoolName:
           params.schoolName?.toString() || '',
 
-        /* السبب - مهم جدًا */
-        reason: finalReason,
-        visitReason: finalReason,
+        /* الإجراءات فقط */
+        procedure:
+          finalActions,
 
-        /* الإجراءات */
-        procedure: finalActions,
-        actions: finalActions,
-        aiActions: finalActions,
+        actions:
+          finalActions,
+
+        aiActions:
+          finalActions,
 
         /* الملاحظات والتوصيات */
-        aiNotes: notes,
+        aiNotes:
+          notes,
+
         aiRecommendations:
           recommendations,
+
         aiFollowUp:
           followUp,
       },
@@ -695,49 +686,6 @@ export default function VisitAI() {
             </>
           ) : null}
 
-          {/* سبب الزيارة */}
-
-          <View
-            style={
-              styles.infoRow
-            }
-          >
-            <Text
-              style={[
-                styles.infoLabel,
-                {
-                  color:
-                    c.mutedForeground,
-                },
-              ]}
-            >
-              سبب الزيارة
-            </Text>
-
-            <Text
-              style={[
-                styles.infoValue,
-                {
-                  color:
-                    c.foreground,
-                },
-              ]}
-            >
-              {reason ||
-                'لم يتم إدخال سبب الزيارة'}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.divider,
-              {
-                backgroundColor:
-                  c.border,
-              },
-            ]}
-          />
-
           {/* الإجراءات */}
 
           <View
@@ -870,7 +818,7 @@ export default function VisitAI() {
                 styles.smartSub
               }
             >
-              تحويل سبب الزيارة والإجراءات إلى صياغة تربوية رسمية
+              تحويل الإجراءات إلى صياغة تربوية رسمية
             </Text>
           </View>
 

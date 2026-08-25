@@ -37,9 +37,24 @@ export type Visit = {
   schoolId: string;
   date: string;
   type: string;
+
+  /*
+   * سبب الزيارة
+   */
+  reason?: string;
+
+  /*
+   * الإجراءات
+   */
   actions: string;
+
+  /*
+   * التوصيات
+   */
   recommendations: string;
+
   status: 'planned' | 'completed' | 'postponed';
+
   photoUri?: string;
 };
 
@@ -58,6 +73,11 @@ export type Task = {
   notes: string;
   done: boolean;
   date: string;
+
+  /*
+   * حالة الخطة الشهرية
+   */
+  planStatus?: 'planned' | 'in_progress' | 'completed';
 };
 
 /*
@@ -94,39 +114,18 @@ export type MinistryBookCategory =
 export type MinistryBook = {
   id: string;
 
-  /*
-   * عنوان مختصر للكتاب
-   */
   title: string;
 
-  /*
-   * رقم الكتاب الوزاري
-   */
   bookNumber: string;
 
-  /*
-   * تاريخ الكتاب
-   */
   date: string;
 
-  /*
-   * تصنيف الكتاب
-   */
   category: MinistryBookCategory;
 
-  /*
-   * صورة الكتاب
-   */
   imageUri: string;
 
-  /*
-   * ملاحظات اختيارية
-   */
   notes?: string;
 
-  /*
-   * تاريخ إضافة الكتاب إلى التطبيق
-   */
   createdAt: string;
 };
 
@@ -195,6 +194,7 @@ const seedVisits: Visit[] = [
     schoolId: 's1',
     date: '2026-08-24',
     type: 'زيارة اختصاص',
+    reason: 'متابعة خطة القسم',
     actions: 'تدقيق السجلات ومتابعة خطة القسم',
     recommendations:
       'استكمال النواقص في السجلات ومتابعة تنفيذ خطة القسم.',
@@ -206,6 +206,7 @@ const seedVisits: Visit[] = [
     schoolId: 's2',
     date: '2026-08-18',
     type: 'زيارة تقويمية',
+    reason: 'متابعة خطة التحسين',
     actions: 'إكمال خطة التحسين',
     recommendations:
       'تنفيذ خطة التحسين ومتابعة مستوى الأداء المدرسي.',
@@ -217,6 +218,7 @@ const seedVisits: Visit[] = [
     schoolId: 's3',
     date: '2026-08-15',
     type: 'زيارة تحقق',
+    reason: 'متابعة تنفيذ التوصيات السابقة',
     actions: 'إعادة الزيارة بعد أسبوع',
     recommendations:
       'تنفيذ التوصيات السابقة ورفع مستوى الالتزام بالإجراءات المطلوبة.',
@@ -240,6 +242,7 @@ const seedTasks: Task[] = [
     notes: 'التأكد من توقيع الإدارة',
     done: false,
     date: '2026-08-20',
+    planStatus: 'planned',
   },
 
   {
@@ -250,6 +253,7 @@ const seedTasks: Task[] = [
     notes: 'إرفاق صور السجلات',
     done: true,
     date: '2026-08-20',
+    planStatus: 'completed',
   },
 ];
 
@@ -318,10 +322,6 @@ type StoreValue = {
   visits: Visit[];
   tasks: Task[];
   staffing: Staffing[];
-
-  /*
-   * الكتب الوزارية
-   */
   ministryBooks: MinistryBook[];
 
   ready: boolean;
@@ -355,6 +355,15 @@ type StoreValue = {
    */
   addTask: (
     data: Omit<Task, 'id'>
+  ) => void;
+
+  updateTask: (
+    taskId: string,
+    data: Omit<Task, 'id'>
+  ) => void;
+
+  deleteTask: (
+    taskId: string
   ) => void;
 
   toggleTask: (
@@ -465,8 +474,7 @@ export function StoreProvider({
           );
 
         if (raw) {
-          const d =
-            JSON.parse(raw);
+          const d = JSON.parse(raw);
 
           /*
            * المدارس
@@ -479,7 +487,8 @@ export function StoreProvider({
           /*
            * الزيارات
            *
-           * توافق مع النسخ القديمة
+           * مهم:
+           * نحتفظ بـ reason من التخزين
            */
           setVisits(
             (
@@ -490,41 +499,133 @@ export function StoreProvider({
                 visit: any
               ): Visit => ({
                 id:
-                  visit.id,
+                  String(
+                    visit.id ?? id()
+                  ),
 
                 schoolId:
-                  visit.schoolId,
+                  String(
+                    visit.schoolId ?? ''
+                  ),
 
                 date:
-                  visit.date,
+                  String(
+                    visit.date ?? ''
+                  ),
 
                 type:
-                  visit.type,
+                  String(
+                    visit.type ?? ''
+                  ),
+
+                /*
+                 * سبب الزيارة
+                 */
+                reason:
+                  visit.reason
+                    ? String(
+                        visit.reason
+                      )
+                    : '',
 
                 actions:
-                  visit.actions ??
-                  '',
+                  String(
+                    visit.actions ?? ''
+                  ),
 
                 recommendations:
-                  visit.recommendations ??
-                  '',
+                  String(
+                    visit.recommendations ?? ''
+                  ),
 
                 status:
-                  visit.status ??
-                  'completed',
+                  visit.status ===
+                    'planned' ||
+                  visit.status ===
+                    'postponed'
+                    ? visit.status
+                    : 'completed',
 
                 photoUri:
-                  visit.photoUri,
+                  visit.photoUri
+                    ? String(
+                        visit.photoUri
+                      )
+                    : undefined,
               })
             )
           );
 
           /*
            * المهام
+           *
+           * نضمن وجود planStatus
+           * حتى تعمل الخطة الشهرية
            */
           setTasks(
-            d.tasks ??
+            (
+              d.tasks ??
               seedTasks
+            ).map(
+              (
+                task: any
+              ): Task => ({
+                id:
+                  String(
+                    task.id ?? id()
+                  ),
+
+                title:
+                  String(
+                    task.title ?? ''
+                  ),
+
+                schoolId:
+                  task.schoolId
+                    ? String(
+                        task.schoolId
+                      )
+                    : undefined,
+
+                time:
+                  String(
+                    task.time ?? ''
+                  ),
+
+                priority:
+                  task.priority ===
+                    'high' ||
+                  task.priority ===
+                    'low'
+                    ? task.priority
+                    : 'medium',
+
+                notes:
+                  String(
+                    task.notes ?? ''
+                  ),
+
+                done:
+                  Boolean(
+                    task.done
+                  ),
+
+                date:
+                  String(
+                    task.date ?? ''
+                  ),
+
+                planStatus:
+                  task.planStatus ===
+                    'in_progress' ||
+                  task.planStatus ===
+                    'completed'
+                    ? task.planStatus
+                    : task.done
+                      ? 'completed'
+                      : 'planned',
+              })
+            )
           );
 
           /*
@@ -537,9 +638,6 @@ export function StoreProvider({
 
           /*
            * الكتب الوزارية
-           *
-           * إذا لم تكن موجودة في النسخة
-           * القديمة نبدأ بمصفوفة فارغة.
            */
           setMinistryBooks(
             (
@@ -552,25 +650,25 @@ export function StoreProvider({
                 id:
                   String(
                     book.id ??
-                    id()
+                      id()
                   ),
 
                 title:
                   String(
                     book.title ??
-                    ''
+                      ''
                   ),
 
                 bookNumber:
                   String(
                     book.bookNumber ??
-                    ''
+                      ''
                   ),
 
                 date:
                   String(
                     book.date ??
-                    ''
+                      ''
                   ),
 
                 category:
@@ -583,7 +681,7 @@ export function StoreProvider({
                 imageUri:
                   String(
                     book.imageUri ??
-                    ''
+                      ''
                   ),
 
                 notes:
@@ -596,7 +694,7 @@ export function StoreProvider({
                 createdAt:
                   String(
                     book.createdAt ??
-                    new Date().toISOString()
+                      new Date().toISOString()
                   ),
               })
             )
@@ -631,10 +729,6 @@ export function StoreProvider({
         visits,
         tasks,
         staffing,
-
-        /*
-         * الكتب الوزارية
-         */
         ministryBooks,
       })
     ).catch(
@@ -669,7 +763,6 @@ export function StoreProvider({
           ...data,
           id: id(),
         },
-
         ...current,
       ]
     );
@@ -707,7 +800,6 @@ export function StoreProvider({
           ...data,
           id: id(),
         },
-
         ...current,
       ]
     );
@@ -745,11 +837,49 @@ export function StoreProvider({
           ...data,
           id: id(),
         },
-
         ...current,
       ]
     );
 
+  /*
+   * تعديل مهمة
+   */
+  const updateTask = (
+    taskId: string,
+    data: Omit<Task, 'id'>
+  ) =>
+    setTasks(
+      (current) =>
+        current.map(
+          (task) =>
+            task.id ===
+            taskId
+              ? {
+                  ...data,
+                  id: taskId,
+                }
+              : task
+        )
+    );
+
+  /*
+   * حذف مهمة
+   */
+  const deleteTask = (
+    taskId: string
+  ) =>
+    setTasks(
+      (current) =>
+        current.filter(
+          (task) =>
+            task.id !==
+            taskId
+        )
+    );
+
+  /*
+   * تغيير حالة المهمة
+   */
   const toggleTask = (
     taskId: string
   ) =>
@@ -763,6 +893,11 @@ export function StoreProvider({
                   ...task,
                   done:
                     !task.done,
+
+                  planStatus:
+                    !task.done
+                      ? 'completed'
+                      : 'planned',
                 }
               : task
         )
@@ -783,7 +918,6 @@ export function StoreProvider({
           ...data,
           id: id(),
         },
-
         ...current,
       ]
     );
@@ -824,9 +958,6 @@ export function StoreProvider({
    * =======================================================
    */
 
-  /*
-   * إضافة كتاب
-   */
   const addMinistryBook = (
     data: Omit<MinistryBook, 'id'>
   ) =>
@@ -836,14 +967,10 @@ export function StoreProvider({
           ...data,
           id: id(),
         },
-
         ...current,
       ]
     );
 
-  /*
-   * تعديل كتاب
-   */
   const updateMinistryBook = (
     bookId: string,
     data: Omit<MinistryBook, 'id'>
@@ -862,9 +989,6 @@ export function StoreProvider({
         )
     );
 
-  /*
-   * حذف كتاب
-   */
   const deleteMinistryBook = (
     bookId: string
   ) =>
@@ -884,48 +1008,30 @@ export function StoreProvider({
    */
 
   const value =
-    useMemo(
+    useMemo<StoreValue>(
       () => ({
         schools,
         visits,
         tasks,
         staffing,
-
-        /*
-         * الكتب
-         */
         ministryBooks,
-
         ready,
 
-        /*
-         * المدارس
-         */
         addSchool,
         updateSchool,
 
-        /*
-         * الزيارات
-         */
         addVisit,
         updateVisit,
 
-        /*
-         * المهام
-         */
         addTask,
+        updateTask,
+        deleteTask,
         toggleTask,
 
-        /*
-         * الملاك
-         */
         addStaffing,
         updateStaffing,
         deleteStaffing,
 
-        /*
-         * الكتب
-         */
         addMinistryBook,
         updateMinistryBook,
         deleteMinistryBook,

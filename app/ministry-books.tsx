@@ -701,7 +701,6 @@ export default function MinistryBooks() {
 
         <ScrollView
           horizontal
-          inverted
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={
             styles.categories
