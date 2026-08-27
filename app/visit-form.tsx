@@ -1,6 +1,6 @@
 // app/visit-form.tsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import {
   Image,
@@ -13,11 +13,14 @@ import {
 } from 'react-native';
 
 import * as ImagePicker from 'expo-image-picker';
+
 import { Feather } from '@expo/vector-icons';
+
 import {
   router,
   useLocalSearchParams,
 } from 'expo-router';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColors } from '@/hooks/useColors';
@@ -26,6 +29,77 @@ import {
   useStore,
   visitTypes,
 } from '@/context/AppContext';
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function asString(
+  value?: string | string[] | null
+) {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+
+  return value?.toString() ?? '';
+}
+
+/*
+ * بناء النص الموحد الذي سيتم تخزينه في actions.
+ *
+ * مهم:
+ * visit-details-table-final.tsx يعتمد على هذه العناوين
+ * لاستخراج الأقسام الأربعة من التقرير.
+ */
+function buildStructuredActions({
+  actions,
+  notes,
+  recommendations,
+  followUp,
+}: {
+  actions: string;
+  notes: string;
+  recommendations: string;
+  followUp: string;
+}) {
+  const sections: string[] = [];
+
+  const cleanActions = actions.trim();
+  const cleanNotes = notes.trim();
+  const cleanRecommendations =
+    recommendations.trim();
+  const cleanFollowUp = followUp.trim();
+
+  if (cleanActions) {
+    sections.push(
+      `الإجراءات:\n${cleanActions}`
+    );
+  }
+
+  if (cleanNotes) {
+    sections.push(
+      `الملاحظات:\n${cleanNotes}`
+    );
+  }
+
+  if (cleanRecommendations) {
+    sections.push(
+      `التوصيات والإجراءات المقترحة:\n${cleanRecommendations}`
+    );
+  }
+
+  if (cleanFollowUp) {
+    sections.push(
+      `خطة المتابعة:\n${cleanFollowUp}`
+    );
+  }
+
+  return sections.join('\n\n');
+}
+
+/* =========================================================
+   MAIN SCREEN
+========================================================= */
 
 export default function VisitForm() {
   const c = useColors();
@@ -40,74 +114,137 @@ export default function VisitForm() {
     updateVisit,
   } = useStore();
 
-  /*
-   * =========================================================
-   * PARAMETERS
-   * =========================================================
-   */
+  /* =======================================================
+     PARAMETERS
+  ======================================================= */
 
   const params =
     useLocalSearchParams<{
-      aiActions?: string;
-      aiNotes?: string;
-      aiRecommendations?: string;
-      aiFollowUp?: string;
+      visitId?: string;
 
       schoolId?: string;
+
       type?: string;
-      visitId?: string;
+
+      visitType?: string;
+
+      date?: string;
+
+      actions?: string;
+
+      procedure?: string;
+
+      recommendations?: string;
+
+      aiActions?: string;
+
+      aiNotes?: string;
+
+      aiRecommendations?: string;
+
+      aiFollowUp?: string;
     }>();
 
-  /*
-   * =========================================================
-   * BASIC DATA
-   * =========================================================
-   */
+  /* =======================================================
+     EDIT MODE
+  ======================================================= */
+
+  const isEditMode =
+    Boolean(params.visitId);
+
+  /* =======================================================
+     SCHOOL
+  ======================================================= */
 
   const [schoolId, setSchoolId] =
     useState(
-      String(
-        params.schoolId ||
-          schools?.[0]?.id ||
-          ''
-      )
+      asString(
+        params.schoolId
+      ) ||
+        schools?.[0]?.id ||
+        ''
     );
+
+  /* =======================================================
+     VISIT TYPE
+  ======================================================= */
 
   const [type, setType] =
     useState(
-      String(
+      asString(
         params.type ||
-          visitTypes?.[0] ||
-          'زيارة اختصاص'
-      )
+          params.visitType
+      ) ||
+        visitTypes?.[0] ||
+        'زيارة اختصاص'
     );
+
+  /* =======================================================
+     DATE
+  ======================================================= */
 
   const [date, setDate] =
     useState(
-      new Date()
-        .toISOString()
-        .slice(0, 10)
+      asString(params.date) ||
+        new Date()
+          .toISOString()
+          .slice(0, 10)
     );
 
-  /*
-   * =========================================================
-   * الإجراءات والتوصيات منفصلة
-   * =========================================================
-   */
+  /* =======================================================
+     ACTIONS
+  ======================================================= */
 
   const [actions, setActions] =
-    useState('');
+    useState(
+      asString(
+        params.actions ||
+          params.procedure ||
+          params.aiActions
+      )
+    );
+
+  /* =======================================================
+     AI NOTES
+  ======================================================= */
+
+  const [notes, setNotes] =
+    useState(
+      asString(
+        params.aiNotes
+      )
+    );
+
+  /* =======================================================
+     RECOMMENDATIONS
+  ======================================================= */
 
   const [
     recommendations,
     setRecommendations,
-  ] = useState('');
+  ] = useState(
+    asString(
+      params.aiRecommendations ||
+        params.recommendations
+    )
+  );
 
-  /*
-   * =========================================================
-   * PHOTO
-   * =========================================================
-   */
+  /* =======================================================
+     FOLLOW UP
+  ======================================================= */
+
+  const [
+    followUp,
+    setFollowUp,
+  ] = useState(
+    asString(
+      params.aiFollowUp
+    )
+  );
+
+  /* =======================================================
+     PHOTO
+  ======================================================= */
 
   const [
     photoUri,
@@ -116,11 +253,9 @@ export default function VisitForm() {
     string | undefined
   >(undefined);
 
-  /*
-   * =========================================================
-   * SAVE STATE
-   * =========================================================
-   */
+  /* =======================================================
+     SAVE STATE
+  ======================================================= */
 
   const [saving, setSaving] =
     useState(false);
@@ -135,43 +270,87 @@ export default function VisitForm() {
     'error' | 'success' | ''
   >('');
 
-  /*
-   * =========================================================
-   * EDIT MODE
-   * =========================================================
-   */
+  /* =======================================================
+     EXISTING VISIT
+  ======================================================= */
 
-  const isEditMode =
-    Boolean(params.visitId);
+  const existingVisit =
+    useMemo(
+      () =>
+        params.visitId
+          ? visits.find(
+              (item) =>
+                item.id ===
+                String(
+                  params.visitId
+                )
+            )
+          : undefined,
+      [
+        params.visitId,
+        visits,
+      ]
+    );
 
-  /*
-   * =========================================================
-   * LOAD EXISTING VISIT
-   * =========================================================
-   */
+  /* =======================================================
+     SELECTED SCHOOL
+  ======================================================= */
+
+  const selectedSchool =
+    useMemo(
+      () =>
+        schools.find(
+          (school) =>
+            school.id ===
+            schoolId
+        ),
+      [
+        schools,
+        schoolId,
+      ]
+    );
+
+  /* =======================================================
+     PREVIOUS VISIT
+  ======================================================= */
+
+  const previousVisits =
+    useMemo(
+      () =>
+        visits
+          .filter(
+            (visit) =>
+              visit.schoolId ===
+                schoolId &&
+              visit.id !==
+                String(
+                  params.visitId ||
+                    ''
+                )
+          )
+          .sort((a, b) =>
+            b.date.localeCompare(
+              a.date
+            )
+          ),
+      [
+        visits,
+        schoolId,
+        params.visitId,
+      ]
+    );
+
+  const latestVisit =
+    previousVisits[0];
+
+  /* =======================================================
+     LOAD EXISTING VISIT
+  ======================================================= */
 
   useEffect(() => {
-    if (
-      !params.visitId ||
-      !visits?.length
-    ) {
-      return;
-    }
-
-    const existingVisit =
-      visits.find(
-        (item) =>
-          item.id ===
-          String(params.visitId)
-      );
-
     if (!existingVisit) {
       return;
     }
-
-    /*
-     * المدرسة
-     */
 
     setSchoolId(
       String(
@@ -179,19 +358,11 @@ export default function VisitForm() {
       )
     );
 
-    /*
-     * نوع الزيارة
-     */
-
     setType(
       String(
         existingVisit.type
       )
     );
-
-    /*
-     * التاريخ
-     */
 
     setDate(
       String(
@@ -200,22 +371,18 @@ export default function VisitForm() {
     );
 
     /*
-     * الإجراءات
+     * إذا كانت الزيارة القديمة تحتوي على
+     * نص منظم داخل actions، لا نعرضه كله
+     * داخل حقل الإجراءات.
+     *
+     * نستخدمه كـ fallback فقط.
      */
-
     setActions(
       String(
         existingVisit.actions ||
           ''
       )
     );
-
-    /*
-     * التوصيات
-     *
-     * نستخدمها إذا كانت موجودة في
-     * الزيارة القديمة.
-     */
 
     setRecommendations(
       String(
@@ -226,86 +393,115 @@ export default function VisitForm() {
     );
 
     /*
-     * الصورة
+     * دعم البيانات الجديدة إذا أضيفت
+     * إلى AppContext مستقبلاً.
      */
+    setNotes(
+      String(
+        (existingVisit as any)
+          .notes ||
+          ''
+      )
+    );
+
+    setFollowUp(
+      String(
+        (existingVisit as any)
+          .followUp ||
+          ''
+      )
+    );
 
     setPhotoUri(
       existingVisit.photoUri
     );
   }, [
-    params.visitId,
-    visits,
+    existingVisit,
   ]);
 
-  /*
-   * =========================================================
-   * استقبال بيانات الذكاء الاصطناعي
-   * =========================================================
-   */
+  /* =======================================================
+     RECEIVE AI DATA
+  ======================================================= */
 
   useEffect(() => {
     /*
-     * الإجراءات القادمة من الذكاء الاصطناعي
+     * الإجراءات
      */
-
     if (
       params.aiActions !==
       undefined
     ) {
       setActions(
-        String(
+        asString(
           params.aiActions
         )
       );
-    }
-
-    /*
-     * التوصيات القادمة من الذكاء الاصطناعي
-     */
-
-    if (
-      params.aiRecommendations !==
+    } else if (
+      params.actions !==
       undefined
     ) {
-      setRecommendations(
-        String(
-          params.aiRecommendations
+      setActions(
+        asString(
+          params.actions
+        )
+      );
+    } else if (
+      params.procedure !==
+      undefined
+    ) {
+      setActions(
+        asString(
+          params.procedure
         )
       );
     }
 
     /*
-     * في حال كان المساعد الذكي يعيد
-     * ملاحظات منفصلة، نضيفها إلى
-     * الإجراءات فقط إذا لم توجد إجراءات.
-     *
-     * هذا يمنع دمج الإجراءات والتوصيات.
+     * الملاحظات
      */
-
     if (
       params.aiNotes !==
-        undefined &&
-      !params.aiActions
+      undefined
     ) {
-      setActions(
-        String(
+      setNotes(
+        asString(
           params.aiNotes
         )
       );
     }
 
     /*
-     * خطة المتابعة تعتبر جزءًا من
-     * التوصيات إذا لم توجد توصيات.
+     * التوصيات
      */
-
     if (
-      params.aiFollowUp !==
-        undefined &&
-      !params.aiRecommendations
+      params.aiRecommendations !==
+      undefined
     ) {
       setRecommendations(
-        String(
+        asString(
+          params.aiRecommendations
+        )
+      );
+    } else if (
+      params.recommendations !==
+      undefined
+    ) {
+      setRecommendations(
+        asString(
+          params.recommendations
+        )
+      );
+    }
+
+    /*
+     * خطة المتابعة
+     */
+    if (
+      params.aiFollowUp !==
+      undefined
+    ) {
+      setFollowUp(
+        asString(
           params.aiFollowUp
         )
       );
@@ -315,13 +511,28 @@ export default function VisitForm() {
     params.aiNotes,
     params.aiRecommendations,
     params.aiFollowUp,
+    params.actions,
+    params.procedure,
+    params.recommendations,
   ]);
 
-  /*
-   * =========================================================
-   * فتح الكاميرا
-   * =========================================================
-   */
+  /* =======================================================
+     CLEAR MESSAGE
+  ======================================================= */
+
+  const clearMessage = () => {
+    if (
+      messageType ===
+      'error'
+    ) {
+      setMessage('');
+      setMessageType('');
+    }
+  };
+
+  /* =======================================================
+     OPEN CAMERA
+  ======================================================= */
 
   const takePhoto =
     async () => {
@@ -362,8 +573,7 @@ export default function VisitForm() {
             result.assets[0].uri
           );
 
-          setMessage('');
-          setMessageType('');
+          clearMessage();
         }
       } catch (error) {
         console.error(
@@ -381,38 +591,84 @@ export default function VisitForm() {
       }
     };
 
-  /*
-   * =========================================================
-   * فتح المساعد الذكي
-   * =========================================================
-   */
+  /* =======================================================
+     OPEN AI
+  ======================================================= */
 
   const openAI = () => {
+    if (!schoolId) {
+      setMessage(
+        'يرجى اختيار المدرسة أولاً.'
+      );
+
+      setMessageType(
+        'error'
+      );
+
+      return;
+    }
+
+    if (!type.trim()) {
+      setMessage(
+        'يرجى اختيار نوع الزيارة أولاً.'
+      );
+
+      setMessageType(
+        'error'
+      );
+
+      return;
+    }
+
     router.push({
       pathname:
         '/visit-ai',
 
       params: {
-        actions:
-          actions || '',
-
-        recommendations:
-          recommendations || '',
+        visitId:
+          params.visitId?.toString() ||
+          '',
 
         schoolId:
-          schoolId || '',
+          schoolId.toString(),
+
+        schoolName:
+          selectedSchool?.name ||
+          '',
+
+        visitType:
+          type.toString(),
 
         type:
-          type || '',
+          type.toString(),
+
+        date:
+          date.toString(),
+
+        actions:
+          actions.toString(),
+
+        procedure:
+          actions.toString(),
+
+        recommendations:
+          recommendations.toString(),
+
+        aiNotes:
+          notes.toString(),
+
+        aiRecommendations:
+          recommendations.toString(),
+
+        aiFollowUp:
+          followUp.toString(),
       },
     });
   };
 
-  /*
-   * =========================================================
-   * حفظ الزيارة
-   * =========================================================
-   */
+  /* =======================================================
+     SAVE VISIT
+  ======================================================= */
 
   const saveVisit =
     async () => {
@@ -423,9 +679,7 @@ export default function VisitForm() {
       setMessage('');
       setMessageType('');
 
-      /*
-       * التأكد من وجود المدرسة
-       */
+      /* المدرسة */
 
       if (!schoolId) {
         setMessage(
@@ -439,9 +693,7 @@ export default function VisitForm() {
         return;
       }
 
-      /*
-       * التأكد من التاريخ
-       */
+      /* التاريخ */
 
       if (!date.trim()) {
         setMessage(
@@ -455,43 +707,85 @@ export default function VisitForm() {
         return;
       }
 
+      /* نوع الزيارة */
+
+      if (!type.trim()) {
+        setMessage(
+          'يرجى اختيار نوع الزيارة.'
+        );
+
+        setMessageType(
+          'error'
+        );
+
+        return;
+      }
+
+      /*
+       * الإجراءات أو أي جزء من صياغة AI
+       */
+
+      if (
+        !actions.trim() &&
+        !notes.trim() &&
+        !recommendations.trim() &&
+        !followUp.trim()
+      ) {
+        setMessage(
+          'يرجى إدخال الإجراءات أو استخدام المساعد الذكي لإعداد صياغة الزيارة.'
+        );
+
+        setMessageType(
+          'error'
+        );
+
+        return;
+      }
+
       try {
         setSaving(true);
 
         /*
-         * الزيارة الموجودة عند التعديل
+         * ===================================================
+         * أهم نقطة في الإصلاح
+         *
+         * لا نحفظ الملاحظات وخطة المتابعة بشكل منفصل
+         * فقط، لأن تقرير الزيارة الحالي يستخرجها
+         * من actions.
+         *
+         * لذلك نبني نسخة منظمة ومتوافقة مع التقرير.
+         * ===================================================
          */
 
-        const existingVisit =
-          params.visitId
-            ? visits.find(
-                (item) =>
-                  item.id ===
-                  String(
-                    params.visitId
-                  )
-              )
-            : undefined;
+        const structuredActions =
+          buildStructuredActions({
+            actions,
+            notes,
+            recommendations,
+            followUp,
+          });
 
         /*
-         * =====================================================
-         * بيانات الزيارة
-         * =====================================================
-         *
-         * مهم:
-         *
-         * لا يوجد reason هنا.
-         *
-         * الإجراءات:
-         * actions
-         *
-         * التوصيات:
-         * recommendations
+         * إذا لم توجد بيانات AI،
+         * نحتفظ بالإجراءات كما هي.
          */
+        const finalActions =
+          structuredActions ||
+          actions.trim();
+
+        /*
+         * نحافظ أيضًا على حقل recommendations
+         * حتى تبقى البيانات متوافقة مع AppContext
+         * والزيارات السابقة.
+         */
+        const finalRecommendations =
+          recommendations.trim();
 
         const visitData = {
           schoolId:
-            String(schoolId),
+            String(
+              schoolId
+            ),
 
           date:
             date.trim(),
@@ -500,10 +794,21 @@ export default function VisitForm() {
             type.trim(),
 
           actions:
-            actions.trim(),
+            finalActions,
 
           recommendations:
-            recommendations.trim(),
+            finalRecommendations,
+
+          /*
+           * دعم إضافي للنسخ المستقبلية من AppContext.
+           * لن يسبب مشكلة إذا كان AppContext الحالي
+           * يتجاهل الحقول الإضافية.
+           */
+          notes:
+            notes.trim(),
+
+          followUp:
+            followUp.trim(),
 
           status:
             existingVisit?.status ||
@@ -528,11 +833,7 @@ export default function VisitForm() {
           '=============================='
         );
 
-        /*
-         * =====================================================
-         * تعديل زيارة
-         * =====================================================
-         */
+        /* التعديل */
 
         if (
           isEditMode &&
@@ -543,26 +844,18 @@ export default function VisitForm() {
               String(
                 params.visitId
               ),
-              visitData
+              visitData as any
             )
           );
         } else {
-          /*
-           * ===================================================
-           * إضافة زيارة جديدة
-           * ===================================================
-           */
+          /* الإضافة */
 
           await Promise.resolve(
             addVisit(
-              visitData
+              visitData as any
             )
           );
         }
-
-        /*
-         * رسالة النجاح
-         */
 
         setMessage(
           isEditMode
@@ -573,10 +866,6 @@ export default function VisitForm() {
         setMessageType(
           'success'
         );
-
-        /*
-         * العودة بعد الحفظ
-         */
 
         setTimeout(() => {
           router.back();
@@ -607,11 +896,9 @@ export default function VisitForm() {
       }
     };
 
-  /*
-   * =========================================================
-   * USER INTERFACE
-   * =========================================================
-   */
+  /* =======================================================
+     USER INTERFACE
+  ======================================================= */
 
   return (
     <View
@@ -623,9 +910,7 @@ export default function VisitForm() {
         },
       ]}
     >
-      {/* =====================================================
-          HEADER
-          ===================================================== */}
+      {/* HEADER */}
 
       <View
         style={[
@@ -672,14 +957,10 @@ export default function VisitForm() {
 
         <View
           style={{
-            width: 35,
+            width: 36,
           }}
         />
       </View>
-
-      {/* =====================================================
-          CONTENT
-          ===================================================== */}
 
       <ScrollView
         showsVerticalScrollIndicator={
@@ -690,13 +971,12 @@ export default function VisitForm() {
           styles.content,
           {
             paddingBottom:
-              insets.bottom + 40,
+              insets.bottom +
+              40,
           },
         ]}
       >
-        {/* ===================================================
-            المدرسة
-            =================================================== */}
+        {/* المدرسة */}
 
         <Text
           style={[
@@ -718,7 +998,6 @@ export default function VisitForm() {
               {
                 backgroundColor:
                   c.card,
-
                 borderColor:
                   c.border,
               },
@@ -755,7 +1034,7 @@ export default function VisitForm() {
               styles.chips
             }
           >
-            {schools?.map(
+            {schools.map(
               (school) => {
                 const selected =
                   schoolId ===
@@ -766,11 +1045,12 @@ export default function VisitForm() {
                     key={
                       school.id
                     }
-                    onPress={() =>
+                    onPress={() => {
                       setSchoolId(
                         school.id
-                      )
-                    }
+                      );
+                      clearMessage();
+                    }}
                     style={[
                       styles.chip,
                       {
@@ -810,9 +1090,261 @@ export default function VisitForm() {
           </ScrollView>
         )}
 
-        {/* ===================================================
-            نوع الزيارة
-            =================================================== */}
+        {selectedSchool ? (
+          <Text
+            style={[
+              styles.selectedSchool,
+              {
+                color:
+                  c.mutedForeground,
+              },
+            ]}
+          >
+            المدرسة المحددة:
+            {' '}
+            {
+              selectedSchool.name
+            }
+          </Text>
+        ) : null}
+
+        {/* آخر زيارة */}
+
+        {selectedSchool ? (
+          <View
+            style={[
+              styles.previousVisitCard,
+              {
+                backgroundColor:
+                  c.secondary,
+                borderColor:
+                  c.border,
+              },
+            ]}
+          >
+            <View
+              style={
+                styles.previousVisitHeader
+              }
+            >
+              <View
+                style={[
+                  styles.previousVisitIcon,
+                  {
+                    backgroundColor:
+                      c.primary,
+                  },
+                ]}
+              >
+                <Feather
+                  name="clock"
+                  size={18}
+                  color={
+                    c.primaryForeground
+                  }
+                />
+              </View>
+
+              <View
+                style={{
+                  flex: 1,
+                }}
+              >
+                <Text
+                  style={[
+                    styles.previousVisitTitle,
+                    {
+                      color:
+                        c.foreground,
+                    },
+                  ]}
+                >
+                  آخر زيارة للمدرسة
+                </Text>
+
+                <Text
+                  style={[
+                    styles.previousVisitSchool,
+                    {
+                      color:
+                        c.mutedForeground,
+                    },
+                  ]}
+                >
+                  {
+                    selectedSchool.name
+                  }
+                </Text>
+              </View>
+            </View>
+
+            {latestVisit ? (
+              <View
+                style={
+                  styles.previousVisitBody
+                }
+              >
+                <View
+                  style={
+                    styles.previousVisitRow
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.previousVisitValue,
+                      {
+                        color:
+                          c.foreground,
+                      },
+                    ]}
+                  >
+                    {
+                      latestVisit.date
+                    }
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.previousVisitLabel,
+                      {
+                        color:
+                          c.mutedForeground,
+                      },
+                    ]}
+                  >
+                    التاريخ
+                  </Text>
+                </View>
+
+                <View
+                  style={
+                    styles.previousVisitRow
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.previousVisitValue,
+                      {
+                        color:
+                          c.primary,
+                      },
+                    ]}
+                  >
+                    {
+                      latestVisit.type ||
+                      'زيارة مدرسية'
+                    }
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.previousVisitLabel,
+                      {
+                        color:
+                          c.mutedForeground,
+                      },
+                    ]}
+                  >
+                    نوع الزيارة
+                  </Text>
+                </View>
+
+                {latestVisit.actions ? (
+                  <View
+                    style={
+                      styles.previousTextBlock
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.previousVisitLabel,
+                        {
+                          color:
+                            c.mutedForeground,
+                        },
+                      ]}
+                    >
+                      الإجراءات السابقة
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.previousVisitText,
+                        {
+                          color:
+                            c.foreground,
+                        },
+                      ]}
+                      numberOfLines={
+                        4
+                      }
+                    >
+                      {
+                        latestVisit.actions
+                      }
+                    </Text>
+                  </View>
+                ) : null}
+
+                {(
+                  latestVisit as any
+                ).recommendations ? (
+                  <View
+                    style={
+                      styles.previousTextBlock
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.previousVisitLabel,
+                        {
+                          color:
+                            c.mutedForeground,
+                        },
+                      ]}
+                    >
+                      التوصيات السابقة
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.previousVisitText,
+                        {
+                          color:
+                            c.foreground,
+                        },
+                      ]}
+                      numberOfLines={
+                        4
+                      }
+                    >
+                      {
+                        (
+                          latestVisit as any
+                        ).recommendations
+                      }
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <Text
+                style={[
+                  styles.noPreviousVisit,
+                  {
+                    color:
+                      c.mutedForeground,
+                  },
+                ]}
+              >
+                لا توجد زيارة سابقة
+                مسجلة لهذه المدرسة.
+              </Text>
+            )}
+          </View>
+        ) : null}
+
+        {/* نوع الزيارة */}
 
         <Text
           style={[
@@ -842,11 +1374,12 @@ export default function VisitForm() {
                   key={
                     visitType
                   }
-                  onPress={() =>
+                  onPress={() => {
                     setType(
                       visitType
-                    )
-                  }
+                    );
+                    clearMessage();
+                  }}
                   style={[
                     styles.type,
                     {
@@ -885,58 +1418,95 @@ export default function VisitForm() {
           )}
         </View>
 
-        {/* ===================================================
-            التاريخ
-            =================================================== */}
+        {/* التاريخ */}
 
         <Field
           label="تاريخ الزيارة"
           value={date}
-          onChangeText={
-            setDate
-          }
+          onChangeText={(
+            value: string
+          ) => {
+            setDate(value);
+            clearMessage();
+          }}
           placeholder="YYYY-MM-DD"
           c={c}
         />
 
-        {/* ===================================================
-            الإجراءات المتخذة
-            =================================================== */}
+        {/* الإجراءات */}
 
         <Field
-          label="الإجراءات المتخذة"
+          label="الإجراءات"
           value={actions}
-          onChangeText={
-            setActions
-          }
-          placeholder="اكتب الإجراءات التي تم اتخاذها أثناء الزيارة..."
+          onChangeText={(
+            value: string
+          ) => {
+            setActions(value);
+            clearMessage();
+          }}
+          placeholder="اكتب ما تم القيام به أثناء الزيارة..."
           c={c}
           multiline
         />
 
-        {/* ===================================================
-            التوصيات
-            =================================================== */}
+        {/* الملاحظات */}
 
         <Field
-          label="التوصيات"
+          label="الملاحظات"
+          value={notes}
+          onChangeText={(
+            value: string
+          ) => {
+            setNotes(value);
+            clearMessage();
+          }}
+          placeholder="اكتب الملاحظات والمشاهدات..."
+          c={c}
+          multiline
+        />
+
+        {/* التوصيات */}
+
+        <Field
+          label="التوصيات والإجراءات المقترحة"
           value={
             recommendations
           }
-          onChangeText={
-            setRecommendations
-          }
-          placeholder="اكتب التوصيات والمقترحات التي ينبغي متابعتها..."
+          onChangeText={(
+            value: string
+          ) => {
+            setRecommendations(
+              value
+            );
+            clearMessage();
+          }}
+          placeholder="اكتب التوصيات والإجراءات المقترحة..."
           c={c}
           multiline
         />
 
-        {/* ===================================================
-            الذكاء الاصطناعي
-            =================================================== */}
+        {/* خطة المتابعة */}
+
+        <Field
+          label="خطة المتابعة"
+          value={followUp}
+          onChangeText={(
+            value: string
+          ) => {
+            setFollowUp(value);
+            clearMessage();
+          }}
+          placeholder="اكتب خطة المتابعة..."
+          c={c}
+          multiline
+        />
+
+        {/* AI */}
 
         <Pressable
-          onPress={openAI}
+          onPress={
+            openAI
+          }
           style={[
             styles.smartButton,
             {
@@ -973,8 +1543,7 @@ export default function VisitForm() {
                 styles.smartTitle
               }
             >
-              تحسين سجل الزيارة
-              بالذكاء الاصطناعي
+              المساعد الذكي للزيارة
             </Text>
 
             <Text
@@ -982,9 +1551,7 @@ export default function VisitForm() {
                 styles.smartSub
               }
             >
-              صياغة الإجراءات
-              والتوصيات بصورة
-              تربوية ومهنية
+              إعداد الملاحظات والتوصيات وخطة المتابعة اعتمادًا على بيانات الزيارة
             </Text>
           </View>
 
@@ -995,9 +1562,7 @@ export default function VisitForm() {
           />
         </Pressable>
 
-        {/* ===================================================
-            الكاميرا
-            =================================================== */}
+        {/* الكاميرا */}
 
         <Pressable
           onPress={
@@ -1060,8 +1625,7 @@ export default function VisitForm() {
                 },
               ]}
             >
-              التقط صورة مباشرة
-              من كاميرا الهاتف
+              التقط صورة مباشرة من كاميرا الهاتف
             </Text>
           </View>
 
@@ -1074,9 +1638,7 @@ export default function VisitForm() {
           />
         </Pressable>
 
-        {/* ===================================================
-            معاينة الصورة
-            =================================================== */}
+        {/* الصورة */}
 
         {photoUri ? (
           <View>
@@ -1123,9 +1685,7 @@ export default function VisitForm() {
           </View>
         ) : null}
 
-        {/* ===================================================
-            رسالة
-            =================================================== */}
+        {/* الرسالة */}
 
         {message ? (
           <View
@@ -1181,9 +1741,7 @@ export default function VisitForm() {
           </View>
         ) : null}
 
-        {/* ===================================================
-            حفظ
-            =================================================== */}
+        {/* الحفظ */}
 
         <Pressable
           onPress={
@@ -1245,19 +1803,16 @@ export default function VisitForm() {
             },
           ]}
         >
-          اضغط على «حفظ الزيارة»
-          لتسجيل الزيارة في التطبيق.
+          اضغط على «حفظ الزيارة» لتسجيل الزيارة في التطبيق.
         </Text>
       </ScrollView>
     </View>
   );
 }
 
-/*
- * =========================================================
- * FIELD COMPONENT
- * =========================================================
- */
+/* =========================================================
+   FIELD
+========================================================= */
 
 function Field({
   label,
@@ -1330,11 +1885,9 @@ function Field({
   );
 }
 
-/*
- * =========================================================
- * STYLES
- * =========================================================
- */
+/* =========================================================
+   STYLES
+========================================================= */
 
 const styles =
   StyleSheet.create({
@@ -1350,27 +1903,20 @@ const styles =
     header: {
       flexDirection:
         'row-reverse',
-
       alignItems:
         'center',
-
       justifyContent:
         'space-between',
-
       paddingHorizontal: 14,
-
       paddingBottom: 14,
-
       borderBottomWidth: 1,
     },
 
     backButton: {
       width: 36,
       height: 36,
-
       alignItems:
         'center',
-
       justifyContent:
         'center',
     },
@@ -1378,60 +1924,77 @@ const styles =
     title: {
       fontFamily:
         'Inter_700Bold',
-
       fontSize: 20,
     },
 
     label: {
       fontFamily:
         'Inter_600SemiBold',
-
       fontSize: 12,
-
       textAlign:
         'right',
-
       marginTop: 12,
-
       marginBottom: 8,
     },
 
     chips: {
       flexDirection:
         'row',
-
       gap: 8,
-
       paddingBottom: 3,
     },
 
     chip: {
       borderWidth: 1,
-
       borderRadius: 12,
-
       paddingHorizontal: 12,
-
       paddingVertical: 10,
+    },
+
+    selectedSchool: {
+      fontFamily:
+        'Inter_400Regular',
+      fontSize: 9,
+      textAlign:
+        'right',
+      marginTop: 5,
+      marginBottom: 2,
+    },
+
+    emptySchool: {
+      minHeight: 80,
+      borderWidth: 1,
+      borderRadius: 13,
+      padding: 14,
+      flexDirection:
+        'row-reverse',
+      alignItems:
+        'center',
+      gap: 10,
+    },
+
+    emptySchoolText: {
+      flex: 1,
+      fontFamily:
+        'Inter_400Regular',
+      fontSize: 11,
+      textAlign:
+        'right',
+      lineHeight: 20,
     },
 
     wrap: {
       flexDirection:
         'row-reverse',
-
       flexWrap:
         'wrap',
-
       gap: 7,
     },
 
     type: {
       borderWidth: 1,
-
       borderRadius: 11,
-
       paddingHorizontal: 10,
-
       paddingVertical: 9,
     },
 
@@ -1441,52 +2004,136 @@ const styles =
 
     input: {
       borderWidth: 1,
-
       borderRadius: 13,
-
       paddingHorizontal: 13,
-
       paddingVertical: 11,
-
       fontFamily:
         'Inter_400Regular',
-
       fontSize: 13,
-
       marginBottom: 3,
-
       lineHeight: 21,
+    },
+
+    previousVisitCard: {
+      borderWidth: 1,
+      borderRadius: 16,
+      padding: 13,
+      marginTop: 14,
+    },
+
+    previousVisitHeader: {
+      flexDirection:
+        'row-reverse',
+      alignItems:
+        'center',
+      gap: 10,
+    },
+
+    previousVisitIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+    },
+
+    previousVisitTitle: {
+      fontFamily:
+        'Inter_700Bold',
+      fontSize: 12,
+      textAlign:
+        'right',
+    },
+
+    previousVisitSchool: {
+      fontFamily:
+        'Inter_400Regular',
+      fontSize: 10,
+      marginTop: 3,
+      textAlign:
+        'right',
+    },
+
+    previousVisitBody: {
+      marginTop: 12,
+      gap: 8,
+    },
+
+    previousVisitRow: {
+      flexDirection:
+        'row-reverse',
+      justifyContent:
+        'space-between',
+      alignItems:
+        'center',
+      paddingVertical: 4,
+    },
+
+    previousVisitLabel: {
+      fontFamily:
+        'Inter_500Medium',
+      fontSize: 10,
+      textAlign:
+        'right',
+    },
+
+    previousVisitValue: {
+      fontFamily:
+        'Inter_600SemiBold',
+      fontSize: 11,
+      textAlign:
+        'right',
+      flexShrink: 1,
+    },
+
+    previousTextBlock: {
+      borderTopWidth: 1,
+      borderTopColor:
+        'rgba(0,0,0,0.06)',
+      paddingTop: 8,
+      marginTop: 2,
+    },
+
+    previousVisitText: {
+      fontFamily:
+        'Inter_400Regular',
+      fontSize: 10,
+      lineHeight: 18,
+      textAlign:
+        'right',
+      marginTop: 4,
+    },
+
+    noPreviousVisit: {
+      fontFamily:
+        'Inter_400Regular',
+      fontSize: 10,
+      textAlign:
+        'right',
+      marginTop: 10,
     },
 
     smartButton: {
       minHeight: 72,
-
       borderRadius: 17,
-
       paddingHorizontal: 13,
-
       flexDirection:
         'row-reverse',
-
       alignItems:
         'center',
-
       gap: 10,
-
       marginTop: 16,
-
       marginBottom: 14,
     },
 
     smartIcon: {
       width: 44,
       height: 44,
-
       borderRadius: 14,
-
       alignItems:
         'center',
-
       justifyContent:
         'center',
     },
@@ -1494,12 +2141,9 @@ const styles =
     smartTitle: {
       color:
         '#FFFFFF',
-
       fontFamily:
         'Inter_700Bold',
-
       fontSize: 12,
-
       textAlign:
         'right',
     },
@@ -1507,45 +2151,33 @@ const styles =
     smartSub: {
       color:
         '#B7D9D4',
-
       fontFamily:
         'Inter_400Regular',
-
       fontSize: 9,
-
       textAlign:
         'right',
-
       marginTop: 3,
+      lineHeight: 15,
     },
 
     camera: {
       borderRadius: 16,
-
       borderWidth: 1,
-
       padding: 12,
-
       flexDirection:
         'row-reverse',
-
       alignItems:
         'center',
-
       gap: 10,
-
       marginTop: 2,
     },
 
     cameraIcon: {
       width: 42,
       height: 42,
-
       borderRadius: 13,
-
       alignItems:
         'center',
-
       justifyContent:
         'center',
     },
@@ -1553,164 +2185,95 @@ const styles =
     cameraTitle: {
       fontFamily:
         'Inter_600SemiBold',
-
       textAlign:
         'right',
-
       fontSize: 13,
     },
 
     cameraSub: {
       fontFamily:
         'Inter_400Regular',
-
       textAlign:
         'right',
-
       fontSize: 10,
-
       marginTop: 4,
+      lineHeight: 15,
     },
 
     preview: {
       width: '100%',
-
       height: 180,
-
       borderRadius: 15,
-
       marginTop: 10,
     },
 
     removePhoto: {
       marginTop: 8,
-
       borderWidth: 1,
-
       borderRadius: 11,
-
       minHeight: 40,
-
       flexDirection:
         'row-reverse',
-
       alignItems:
         'center',
-
       justifyContent:
         'center',
-
-      gap: 6,
+      gap: 7,
     },
 
     removePhotoText: {
+      fontFamily:
+        'Inter_500Medium',
+      fontSize: 11,
       color:
         '#B42318',
-
-      fontFamily:
-        'Inter_600SemiBold',
-
-      fontSize: 11,
     },
 
     messageBox: {
       minHeight: 46,
-
       borderWidth: 1,
-
       borderRadius: 13,
-
       paddingHorizontal: 12,
-
       paddingVertical: 10,
-
       flexDirection:
         'row-reverse',
-
       alignItems:
         'center',
-
       justifyContent:
         'center',
-
       gap: 8,
-
       marginTop: 14,
     },
 
     messageText: {
       fontFamily:
         'Inter_600SemiBold',
-
       fontSize: 11,
-
       textAlign:
         'right',
-
       flexShrink: 1,
     },
 
     save: {
       minHeight: 55,
-
       borderRadius: 15,
-
       flexDirection:
         'row-reverse',
-
       alignItems:
         'center',
-
       justifyContent:
         'center',
-
       gap: 8,
-
       marginTop: 14,
     },
 
     footer: {
       textAlign:
         'center',
-
       fontFamily:
         'Inter_400Regular',
-
       fontSize: 9,
-
       marginTop: 10,
-    },
-
-    emptySchool: {
-      minHeight: 60,
-
-      borderWidth: 1,
-
-      borderRadius: 13,
-
-      paddingHorizontal: 12,
-
-      flexDirection:
-        'row-reverse',
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      gap: 8,
-    },
-
-    emptySchoolText: {
-      fontFamily:
-        'Inter_500Medium',
-
-      fontSize: 11,
-
-      textAlign:
-        'right',
-
-      flexShrink: 1,
+      lineHeight: 16,
     },
   });

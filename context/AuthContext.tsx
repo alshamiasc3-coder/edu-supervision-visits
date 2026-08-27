@@ -7,13 +7,7 @@ import React, {
   useState,
 } from 'react';
 
-export type UserRole =
-  | 'admin'
-  | 'supervisor_manager'
-  | 'department_head'
-  | 'educational_supervisor'
-  | 'school_manager'
-  | 'viewer';
+export type UserRole = 'educational_supervisor';
 
 export type Permission =
   | 'users.view'
@@ -76,57 +70,14 @@ const USERS_STORAGE_KEY = 'edu-supervision-users';
 const SESSION_STORAGE_KEY = 'edu-supervision-session';
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  admin: [
-    'users.view', 'users.create', 'users.update', 'users.delete',
-    'schools.view', 'schools.create', 'schools.update', 'schools.delete',
-    'visits.view', 'visits.create', 'visits.update', 'visits.delete', 'visits.approve',
-    'recommendations.view', 'recommendations.create', 'recommendations.update',
-    'recommendations.delete', 'recommendations.follow_up',
-    'reports.view', 'reports.create', 'reports.export', 'settings.manage',
-  ],
-
-  supervisor_manager: [
-    'users.view',
-    'schools.view', 'schools.create', 'schools.update',
-    'visits.view', 'visits.create', 'visits.update', 'visits.approve',
-    'recommendations.view', 'recommendations.create', 'recommendations.update',
-    'recommendations.follow_up',
-    'reports.view', 'reports.create', 'reports.export',
-  ],
-
-  department_head: [
-    'users.view',
-    'schools.view',
-    'visits.view', 'visits.create', 'visits.update', 'visits.approve',
-    'recommendations.view', 'recommendations.create', 'recommendations.update',
-    'recommendations.follow_up',
-    'reports.view', 'reports.create', 'reports.export',
-  ],
-
   educational_supervisor: [
-    'schools.view',
+    'schools.view', 'schools.create', 'schools.update',
     'visits.view', 'visits.create', 'visits.update',
     'recommendations.view', 'recommendations.create',
     'recommendations.update', 'recommendations.follow_up',
     'reports.view', 'reports.create', 'reports.export',
   ],
-
-  school_manager: [
-    'schools.view',
-    'visits.view',
-    'recommendations.view', 'recommendations.update',
-    'recommendations.follow_up',
-    'reports.view',
-  ],
-
-  viewer: [
-    'schools.view',
-    'visits.view',
-    'recommendations.view',
-    'reports.view',
-  ],
 };
-
 type DemoUser = User & {
   password: string;
 };
@@ -137,56 +88,11 @@ type DemoUser = User & {
  */
 const DEMO_USERS: DemoUser[] = [
   {
-    id: 'user-admin',
-    username: 'admin',
-    password: 'admin123',
-    fullName: 'مدير النظام',
-    role: 'admin',
-    active: true,
-    createdAt: '2026-08-01',
-  },
-  {
-    id: 'user-manager',
-    username: 'manager',
-    password: 'manager123',
-    fullName: 'مدير الإشراف',
-    role: 'supervisor_manager',
-    active: true,
-    createdAt: '2026-08-01',
-  },
-  {
-    id: 'user-head',
-    username: 'head',
-    password: 'head123',
-    fullName: 'رئيس القسم',
-    role: 'department_head',
-    active: true,
-    createdAt: '2026-08-01',
-  },
-  {
     id: 'user-supervisor',
     username: 'supervisor',
     password: 'supervisor123',
     fullName: 'المشرف التربوي',
     role: 'educational_supervisor',
-    active: true,
-    createdAt: '2026-08-01',
-  },
-  {
-    id: 'user-school',
-    username: 'school',
-    password: 'school123',
-    fullName: 'مدير المدرسة',
-    role: 'school_manager',
-    active: true,
-    createdAt: '2026-08-01',
-  },
-  {
-    id: 'user-viewer',
-    username: 'viewer',
-    password: 'viewer123',
-    fullName: 'مستخدم للعرض',
-    role: 'viewer',
     active: true,
     createdAt: '2026-08-01',
   },
@@ -379,10 +285,5 @@ export function useAuth() {
 }
 
 export const roleLabels: Record<UserRole, string> = {
-  admin: 'مدير النظام',
-  supervisor_manager: 'مدير الإشراف',
-  department_head: 'رئيس القسم',
   educational_supervisor: 'المشرف التربوي',
-  school_manager: 'مدير المدرسة',
-  viewer: 'مستخدم للعرض فقط',
 };

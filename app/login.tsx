@@ -139,7 +139,6 @@ export default function LoginScreen() {
 
           <View style={styles.demoBox}>
             <Text style={styles.demoTitle}>حسابات الاختبار</Text>
-            <Text style={styles.demoText}>admin / admin123</Text>
             <Text style={styles.demoText}>supervisor / supervisor123</Text>
             <Text style={styles.demoHint}>
               هذه الحسابات للتطوير والاختبار فقط.

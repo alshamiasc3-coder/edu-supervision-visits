@@ -17,325 +17,35 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColors } from '@/hooks/useColors';
 
-type VisitType =
-  | 'cleanliness'
-  | 'academic'
-  | 'attendance'
-  | 'teachers'
-  | 'behavior'
-  | 'administration'
-  | 'general';
+type VisitType = string;
 
 /* =========================================================
-   NORMALIZE
+   VISIT TYPE LABELS
+   نوع الزيارة
 ========================================================= */
 
-function normalize(value: string = '') {
-  return value
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[إأآا]/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/ى/g, 'ي')
-    .replace(/ؤ/g, 'و')
-    .replace(/ئ/g, 'ي')
-    .replace(/ـ/g, '')
-    .replace(/[ًٌٍَُِّْ]/g, '');
-}
+const VISIT_TYPE_LABELS: Record<string, string> = {
+  'زيارة اختصاص': 'زيارة اختصاص',
+  'زيارة متابعة': 'زيارة متابعة',
+  'زيارة صديق ناقد': 'زيارة صديق ناقد',
+  'زيارة تحقق': 'زيارة تحقق',
+  'زيارة تحقيق': 'زيارة تحقيق',
+  'زيارة تقويمية': 'زيارة تقويمية',
+  'زيارة غير تقويمية': 'زيارة غير تقويمية',
+};
 
 /* =========================================================
-   DETECT VISIT TYPE
-   يعتمد على الإجراءات فقط
+   NORMALIZE VISIT TYPE
+
+   نوع الزيارة يأتي مباشرة من visit-form
+   ولا يتم استنتاجه من الإجراءات.
 ========================================================= */
 
-function detectVisitType(
-  procedure: string
+function normalizeVisitType(
+  value?: string | string[]
 ): VisitType {
-  const text = normalize(procedure);
-
-  /* =====================================================
-     النظافة والخدمات المدرسية
-  ===================================================== */
-
-  if (
-    text.includes('خدمه') ||
-    text.includes('الخدمه') ||
-    text.includes('نظاف') ||
-    text.includes('صفوف') ||
-    text.includes('الصفوف') ||
-    text.includes('مرافق') ||
-    text.includes('المرافق') ||
-    text.includes('البيئه المدرسيه') ||
-    text.includes('نظافه البيئه')
-  ) {
-    return 'cleanliness';
-  }
-
-  /* =====================================================
-     التحصيل الدراسي والطلاب
-  ===================================================== */
-
-  if (
-    text.includes('تحصيل') ||
-    text.includes('التحصيل') ||
-    text.includes('مستوي الطلاب') ||
-    text.includes('مستوى الطلاب') ||
-    text.includes('مستوي الطلبه') ||
-    text.includes('مستوى الطلبه') ||
-    text.includes('درجات الطلاب') ||
-    text.includes('درجات الطلبه') ||
-    text.includes('الطلاب') ||
-    text.includes('الطلبه') ||
-    text.includes('رياضيات') ||
-    text.includes('الرياضيات') ||
-    text.includes('قراءه') ||
-    text.includes('القراءة') ||
-    text.includes('تعلم الطلاب') ||
-    text.includes('التعلم') ||
-    text.includes('ماده') ||
-    text.includes('الماده')
-  ) {
-    return 'academic';
-  }
-
-  /* =====================================================
-     الحضور والانصراف والدوام
-  ===================================================== */
-
-  if (
-    text.includes('دوام') ||
-    text.includes('الدوام') ||
-    text.includes('حضور') ||
-    text.includes('الحضور') ||
-    text.includes('انصراف') ||
-    text.includes('الانصراف') ||
-    text.includes('سجلات الحضور') ||
-    text.includes('سجلات الانصراف') ||
-    text.includes('سجلات دوام')
-  ) {
-    return 'attendance';
-  }
-
-  /* =====================================================
-     المعلمون والخطط الدراسية
-  ===================================================== */
-
-  if (
-    text.includes('مدرس') ||
-    text.includes('المدرس') ||
-    text.includes('مدرسين') ||
-    text.includes('المدرسين') ||
-    text.includes('معلم') ||
-    text.includes('المعلم') ||
-    text.includes('معلمين') ||
-    text.includes('المعلمين') ||
-    text.includes('خطه المدرس') ||
-    text.includes('خطط المدرسين') ||
-    text.includes('خطه المعلم') ||
-    text.includes('خطط المعلمين') ||
-    text.includes('الخطة الدراسية') ||
-    text.includes('خطه دراسيه')
-  ) {
-    return 'teachers';
-  }
-
-  /* =====================================================
-     الانضباط والسلوك
-  ===================================================== */
-
-  if (
-    text.includes('انضباط') ||
-    text.includes('الانضباط') ||
-    text.includes('سلوك') ||
-    text.includes('السلوك') ||
-    text.includes('مشكلات سلوكيه') ||
-    text.includes('مشاكل سلوكيه') ||
-    text.includes('مشكلات الطلاب') ||
-    text.includes('مشاكل الطلاب')
-  ) {
-    return 'behavior';
-  }
-
-  /* =====================================================
-     الإدارة والشؤون الإدارية
-  ===================================================== */
-
-  if (
-    text.includes('اداري') ||
-    text.includes('اداريه') ||
-    text.includes('الاداره') ||
-    text.includes('اداره') ||
-    text.includes('إدارة') ||
-    text.includes('شؤون اداريه') ||
-    text.includes('سجلات اداريه') ||
-    text.includes('العمل الاداري')
-  ) {
-    return 'administration';
-  }
-
-  return 'general';
-}
-
-/* =========================================================
-   BUILD AI DRAFT
-   لا يوجد سبب زيارة هنا
-========================================================= */
-
-function buildDraft(
-  procedure: string,
-  type: VisitType
-) {
-  const cleanProcedure =
-    procedure.trim() ||
-    'متابعة الإجراءات المرتبطة بموضوع الزيارة';
-
-  let generatedNotes = '';
-  let generatedRecommendations = '';
-  let generatedFollowUp = '';
-
-  switch (type) {
-    /* =====================================================
-       النظافة والخدمات
-    ===================================================== */
-
-    case 'cleanliness':
-      generatedNotes =
-        `تمت زيارة المدرسة للاطلاع على واقع نظافة الصفوف والمرافق المدرسية ومتابعة الإجراءات المتخذة للمحافظة على نظافة البيئة المدرسية، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة.`;
-
-      generatedRecommendations =
-        `1. متابعة مستوى نظافة الصفوف والمرافق المدرسية بصورة مستمرة.\n\n` +
-        `2. التأكد من تنفيذ أعمال النظافة وفق البرنامج المعتمد.\n\n` +
-        `3. متابعة معالجة الملاحظات المتعلقة بنظافة الصفوف والمدرسة خلال المدة المحددة.\n\n` +
-        `4. التأكد من توفر المستلزمات اللازمة لأعمال النظافة والمحافظة على البيئة المدرسية.\n\n` +
-        `5. توثيق مستوى الإنجاز والإجراءات المتخذة ومعالجة أي ملاحظات جديدة.\n\n` +
-        `6. متابعة الإجراء المحدد: ${cleanProcedure}`;
-
-      generatedFollowUp =
-        `تتم متابعة مستوى نظافة الصفوف والمدرسة خلال الزيارة القادمة، مع التحقق من تنفيذ الإجراءات المطلوبة ومعالجة الملاحظات المسجلة وتوثيق مستوى التحسن والنتائج المتحققة.`;
-      break;
-
-    /* =====================================================
-       التحصيل الدراسي
-    ===================================================== */
-
-    case 'academic':
-      generatedNotes =
-        `تمت زيارة المدرسة للاطلاع على مستوى التحصيل الدراسي للطلبة ومتابعة واقع الأداء التعليمي في المادة أو المجال المعني، مع رصد الملاحظات المتعلقة بمستوى الطلبة والإجراءات المتخذة لمعالجة جوانب الضعف وتحسين مستوى التعلم.`;
-
-      generatedRecommendations =
-        `1. متابعة مستوى تحصيل الطلبة في المادة أو المجال المحدد.\n\n` +
-        `2. تحديد الطلبة الذين يحتاجون إلى دعم تعليمي إضافي ووضع إجراءات مناسبة لمعالجة جوانب الضعف.\n\n` +
-        `3. متابعة تنفيذ الإجراءات التعليمية والعلاجية المتخذة من قبل المدرسة.\n\n` +
-        `4. التأكد من قياس مستوى التحسن بصورة دورية وتوثيق النتائج.\n\n` +
-        `5. متابعة تنفيذ الإجراء المحدد: ${cleanProcedure}`;
-
-      generatedFollowUp =
-        `تتم متابعة مستوى تحصيل الطلبة خلال الزيارة القادمة، مع التحقق من أثر الإجراءات العلاجية والتعليمية المتخذة وقياس مستوى التحسن وتوثيق النتائج الجديدة.`;
-      break;
-
-    /* =====================================================
-       الحضور والانصراف
-    ===================================================== */
-
-    case 'attendance':
-      generatedNotes =
-        `تمت زيارة المدرسة للاطلاع على سجلات الحضور والانصراف والدوام ومتابعة مدى انتظام الكوادر التعليمية والإدارية، مع رصد الملاحظات التي تحتاج إلى معالجة وفق التعليمات والإجراءات المعتمدة.`;
-
-      generatedRecommendations =
-        `1. متابعة سجلات الحضور والانصراف بصورة مستمرة.\n\n` +
-        `2. التأكد من انتظام الدوام والالتزام بأوقات الحضور والانصراف المحددة.\n\n` +
-        `3. معالجة حالات عدم الانتظام وفق التعليمات المعتمدة.\n\n` +
-        `4. توثيق الإجراءات المتخذة والنتائج المتحققة.\n\n` +
-        `5. متابعة تنفيذ الإجراء المحدد: ${cleanProcedure}`;
-
-      generatedFollowUp =
-        `تتم متابعة انتظام الدوام والحضور والانصراف خلال الزيارة القادمة، مع التحقق من معالجة حالات عدم الانتظام وتوثيق مستوى الالتزام والنتائج الجديدة.`;
-      break;
-
-    /* =====================================================
-       المعلمون والخطط الدراسية
-    ===================================================== */
-
-    case 'teachers':
-      generatedNotes =
-        `تمت زيارة المدرسة للاطلاع على واقع أداء الكوادر التعليمية ومتابعة تنفيذ الخطط التعليمية والسجلات الخاصة بالمعلمين، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة.`;
-
-      generatedRecommendations =
-        `1. متابعة تنفيذ الخطط التعليمية والسجلات الخاصة بالكوادر التعليمية.\n\n` +
-        `2. التأكد من استكمال المتطلبات التعليمية وفق التعليمات المعتمدة.\n\n` +
-        `3. متابعة الملاحظات المسجلة ومعالجة جوانب النقص خلال المدة المحددة.\n\n` +
-        `4. توثيق مستوى الإنجاز والإجراءات المتخذة.\n\n` +
-        `5. متابعة تنفيذ الإجراء المحدد: ${cleanProcedure}`;
-
-      generatedFollowUp =
-        `تتم متابعة أداء الكوادر التعليمية وتنفيذ الخطط خلال الزيارة القادمة، مع التحقق من معالجة الملاحظات السابقة وتوثيق مستوى الإنجاز والنتائج الجديدة.`;
-      break;
-
-    /* =====================================================
-       الانضباط والسلوك
-    ===================================================== */
-
-    case 'behavior':
-      generatedNotes =
-        `تمت زيارة المدرسة للاطلاع على مستوى الانضباط والسلوك المدرسي ومتابعة الإجراءات المتخذة لمعالجة الحالات والملاحظات المسجلة، مع التأكيد على تطبيق التعليمات التربوية المعتمدة.`;
-
-      generatedRecommendations =
-        `1. متابعة مستوى الانضباط والسلوك داخل المدرسة بصورة مستمرة.\n\n` +
-        `2. معالجة الحالات والملاحظات السلوكية وفق الأساليب التربوية والتعليمات المعتمدة.\n\n` +
-        `3. تعزيز دور الإدارة والكوادر التعليمية في متابعة السلوك المدرسي.\n\n` +
-        `4. توثيق الإجراءات المتخذة والنتائج المتحققة.\n\n` +
-        `5. متابعة تنفيذ الإجراء المحدد: ${cleanProcedure}`;
-
-      generatedFollowUp =
-        `تتم متابعة مستوى الانضباط والسلوك خلال الزيارة القادمة، مع التحقق من معالجة الحالات السابقة وقياس مستوى التحسن وتوثيق النتائج الجديدة.`;
-      break;
-
-    /* =====================================================
-       الإدارة
-    ===================================================== */
-
-    case 'administration':
-      generatedNotes =
-        `تمت زيارة المدرسة للاطلاع على واقع العمل الإداري ومتابعة السجلات والإجراءات الإدارية المتخذة، مع رصد الملاحظات التي تحتاج إلى معالجة ومتابعة وفق التعليمات وخطة العمل المعتمدة.`;
-
-      generatedRecommendations =
-        `1. متابعة تنفيذ الإجراءات الإدارية المرتبطة بموضوع الزيارة.\n\n` +
-        `2. التأكد من استكمال السجلات والوثائق المطلوبة.\n\n` +
-        `3. معالجة الملاحظات الإدارية المسجلة خلال المدة المحددة.\n\n` +
-        `4. توثيق مستوى الإنجاز والإجراءات المتخذة.\n\n` +
-        `5. متابعة تنفيذ الإجراء المحدد: ${cleanProcedure}`;
-
-      generatedFollowUp =
-        `تتم متابعة الإجراءات الإدارية خلال الزيارة القادمة، مع التحقق من استكمال المتطلبات ومعالجة الملاحظات السابقة وتوثيق مستوى الإنجاز والنتائج الجديدة.`;
-      break;
-
-    /* =====================================================
-       عام
-    ===================================================== */
-
-    case 'general':
-    default:
-      generatedNotes =
-        `تمت زيارة المدرسة للاطلاع على واقع العمل ومتابعة الإجراءات المتخذة ومستوى تنفيذها، مع رصد الملاحظات التي تحتاج إلى متابعة ومعالجة وفق خطة العمل المعتمدة.`;
-
-      generatedRecommendations =
-        `1. متابعة تنفيذ الإجراءات المرتبطة بموضوع الزيارة.\n\n` +
-        `2. التأكد من معالجة الملاحظات التي تم رصدها خلال المدة المحددة.\n\n` +
-        `3. متابعة مستوى التنفيذ وقياس مدى تحقق النتائج المطلوبة.\n\n` +
-        `4. توثيق الإجراءات المنفذة والنتائج المتحققة.\n\n` +
-        `5. متابعة تنفيذ الإجراء المحدد: ${cleanProcedure}`;
-
-      generatedFollowUp =
-        `تتم متابعة تنفيذ التوصيات والإجراءات خلال الزيارة القادمة، مع التحقق من مستوى الإنجاز وتوثيق النتائج والملاحظات الجديدة.`;
-      break;
-  }
-
-  return {
-    notes: generatedNotes,
-    recommendations: generatedRecommendations,
-    followUp: generatedFollowUp,
-  };
+  const type = Array.isArray(value) ? value[0] : value;
+  return type?.trim() || 'زيارة متابعة';
 }
 
 /* =========================================================
@@ -350,9 +60,20 @@ export default function VisitAI() {
     visitId?: string;
     schoolName?: string;
 
+    /*
+     * نوع الزيارة
+     */
+    visitType?: string;
+
+    /*
+     * الإجراءات
+     */
     procedure?: string;
     actions?: string;
 
+    /*
+     * بيانات الذكاء الاصطناعي
+     */
     aiActions?: string;
     aiNotes?: string;
     aiRecommendations?: string;
@@ -360,7 +81,20 @@ export default function VisitAI() {
   }>();
 
   /* =======================================================
-     READ PROCEDURE
+     VISIT TYPE
+  ======================================================= */
+
+  const visitType = useMemo(() => {
+    return normalizeVisitType(
+      params.visitType
+    );
+  }, [params.visitType]);
+
+  const typeLabel =
+    VISIT_TYPE_LABELS[visitType];
+
+  /* =======================================================
+     INITIAL PROCEDURE
   ======================================================= */
 
   const initialProcedure = useMemo(() => {
@@ -380,10 +114,7 @@ export default function VisitAI() {
     useState(initialProcedure);
 
   const [actions, setActions] =
-    useState(
-      initialProcedure ||
-        'لم يتم إدخال إجراءات للزيارة بعد.'
-    );
+    useState(initialProcedure);
 
   /* =======================================================
      AI TEXT
@@ -392,70 +123,145 @@ export default function VisitAI() {
   const [notes, setNotes] =
     useState(
       params.aiNotes?.toString() ||
-        'اضغط على «إعداد الصياغة الذكية» لإنشاء الملاحظات المناسبة للإجراءات المحددة.'
+        'اضغط على «إعداد الصياغة الذكية» لإنشاء الملاحظات المناسبة لنوع الزيارة والإجراءات المحددة.'
     );
 
   const [recommendations, setRecommendations] =
     useState(
       params.aiRecommendations?.toString() ||
-        'سيتم إنشاء التوصيات والإجراءات المقترحة بناءً على الإجراءات المحددة.'
+        'سيتم إنشاء التوصيات والإجراءات المقترحة بناءً على نوع الزيارة والإجراءات المحددة.'
     );
 
   const [followUp, setFollowUp] =
     useState(
       params.aiFollowUp?.toString() ||
-        'سيتم إنشاء خطة متابعة مرتبطة بالإجراءات بعد إعداد الصياغة الذكية.'
+        'سيتم إنشاء خطة متابعة مرتبطة مباشرة بنوع الزيارة والإجراءات بعد إعداد الصياغة الذكية.'
     );
 
   const [loading, setLoading] =
     useState(false);
 
-  const [generatedType, setGeneratedType] =
-    useState<VisitType>('general');
-
   /* =======================================================
      PREPARE AI
   ======================================================= */
 
-  const prepareAI = () => {
+  const prepareAI = async () => {
     setLoading(true);
 
-    const currentProcedure =
-      actions.trim() ||
-      procedure.trim();
+    try {
+      const currentProcedure =
+        actions.trim() ||
+        procedure.trim();
 
-    const type =
-      detectVisitType(
-        currentProcedure
+      if (!currentProcedure) {
+        throw new Error(
+          'يرجى إدخال الإجراءات أو التوصيات أولًا.'
+        );
+      }
+
+      const schoolName =
+        params.schoolName?.toString() || '';
+
+      /* ===================================================
+         إرسال البيانات إلى الخادم
+
+         visitType = نوع الزيارة
+         procedure = الإجراءات
+         schoolName = اسم المدرسة
+      =================================================== */
+
+      const response = await fetch(
+        `${(process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '')}/api/ai/visit-draft`,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
+
+          body: JSON.stringify({
+            visitType: visitType,
+
+            procedure:
+              currentProcedure,
+
+            schoolName:
+              schoolName,
+          }),
+        }
       );
 
-    const draft =
-      buildDraft(
-        currentProcedure,
-        type
+      const data =
+        await response.json();
+
+      if (!response.ok || !data?.ok) {
+        throw new Error(
+          data?.error ||
+            'تعذر الاتصال بخدمة الذكاء الاصطناعي.'
+        );
+      }
+
+      const draft =
+        data.result;
+
+      /* ===================================================
+         NOTES
+      =================================================== */
+
+      setNotes(
+        String(
+          draft?.notes || ''
+        ).trim()
       );
 
-    setGeneratedType(type);
+      /* ===================================================
+         RECOMMENDATIONS
+      =================================================== */
 
-    setNotes(
-      draft.notes
-    );
+      setRecommendations(
+        String(
+          draft?.recommendations || ''
+        ).trim()
+      );
 
-    setRecommendations(
-      draft.recommendations
-    );
+      /* ===================================================
+         FOLLOW UP
+      =================================================== */
 
-    setFollowUp(
-      draft.followUp
-    );
+      setFollowUp(
+        String(
+          draft?.followUp || ''
+        ).trim()
+      );
 
-    setLoading(false);
+    } catch (error) {
+      console.error(
+        'AI visit draft error:',
+        error
+      );
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'حدث خطأ أثناء إعداد الصياغة الذكية.';
+
+      setNotes(
+        `تعذر إنشاء الصياغة الذكية: ${message}`
+      );
+
+      setRecommendations('');
+      setFollowUp('');
+
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* =======================================================
      USE DRAFT
-     
-     لا نرسل سبب الزيارة نهائيًا.
+
+     إعادة البيانات إلى visit-form
   ======================================================= */
 
   const useDraft = () => {
@@ -473,7 +279,11 @@ export default function VisitAI() {
         schoolName:
           params.schoolName?.toString() || '',
 
-        /* الإجراءات فقط */
+        /* نوع الزيارة */
+        visitType:
+          visitType,
+
+        /* الإجراءات */
         procedure:
           finalActions,
 
@@ -483,7 +293,7 @@ export default function VisitAI() {
         aiActions:
           finalActions,
 
-        /* الملاحظات والتوصيات */
+        /* صياغة الذكاء الاصطناعي */
         aiNotes:
           notes,
 
@@ -495,33 +305,6 @@ export default function VisitAI() {
       },
     });
   };
-
-  /* =======================================================
-     TYPE LABEL
-  ======================================================= */
-
-  const typeLabel = {
-    cleanliness:
-      'النظافة والخدمات المدرسية',
-
-    academic:
-      'التحصيل الدراسي',
-
-    attendance:
-      'الحضور والانصراف',
-
-    teachers:
-      'الكوادر التعليمية والخطط',
-
-    behavior:
-      'الانضباط والسلوك',
-
-    administration:
-      'العمل الإداري',
-
-    general:
-      'موضوع عام',
-  }[generatedType];
 
   /* =======================================================
      UI
@@ -547,6 +330,7 @@ export default function VisitAI() {
           {
             paddingTop:
               insets.top + 10,
+
             borderBottomColor:
               c.border,
           },
@@ -627,6 +411,8 @@ export default function VisitAI() {
       >
         {/* =================================================
             VISIT INFORMATION
+
+            المعلومات الأساسية تظهر هنا فقط
         ================================================= */}
 
         <View
@@ -635,12 +421,15 @@ export default function VisitAI() {
             {
               backgroundColor:
                 c.card,
+
               borderColor:
                 c.border,
             },
           ]}
         >
-          {/* المدرسة */}
+          {/* =================================================
+              المدرسة
+          ================================================= */}
 
           {params.schoolName ? (
             <>
@@ -686,7 +475,53 @@ export default function VisitAI() {
             </>
           ) : null}
 
-          {/* الإجراءات */}
+          {/* =================================================
+              نوع الزيارة
+          ================================================= */}
+
+          <View
+            style={
+              styles.infoRow
+            }
+          >
+            <Text
+              style={[
+                styles.infoLabel,
+                {
+                  color:
+                    c.mutedForeground,
+                },
+              ]}
+            >
+              نوع الزيارة
+            </Text>
+
+            <Text
+              style={[
+                styles.infoValue,
+                {
+                  color:
+                    c.foreground,
+                },
+              ]}
+            >
+              {typeLabel}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.divider,
+              {
+                backgroundColor:
+                  c.border,
+              },
+            ]}
+          />
+
+          {/* =================================================
+              الإجراءات
+          ================================================= */}
 
           <View
             style={
@@ -738,7 +573,7 @@ export default function VisitAI() {
             multiline
             textAlign="right"
             textAlignVertical="top"
-            placeholder="اكتب الإجراءات المطلوبة..."
+            placeholder="اكتب الإجراءات أو التوصيات المطلوبة..."
             placeholderTextColor={
               c.mutedForeground
             }
@@ -747,8 +582,10 @@ export default function VisitAI() {
               {
                 backgroundColor:
                   c.card,
+
                 borderColor:
                   c.border,
+
                 color:
                   c.foreground,
               },
@@ -770,6 +607,7 @@ export default function VisitAI() {
             {
               backgroundColor:
                 c.navy,
+
               opacity:
                 loading ? 0.75 : 1,
             },
@@ -818,7 +656,7 @@ export default function VisitAI() {
                 styles.smartSub
               }
             >
-              تحويل الإجراءات إلى صياغة تربوية رسمية
+              صياغة الزيارة اعتمادًا على نوع الزيارة والإجراءات
             </Text>
           </View>
 
@@ -828,41 +666,6 @@ export default function VisitAI() {
             color="#FFFFFF"
           />
         </Pressable>
-
-        {/* =================================================
-            DETECTED TYPE
-        ================================================= */}
-
-        <View
-          style={[
-            styles.detectedBox,
-            {
-              backgroundColor:
-                c.secondary ||
-                c.card,
-              borderColor:
-                c.border,
-            },
-          ]}
-        >
-          <Feather
-            name="check-circle"
-            size={16}
-            color={c.primary}
-          />
-
-          <Text
-            style={[
-              styles.detectedText,
-              {
-                color:
-                  c.foreground,
-              },
-            ]}
-          >
-            نوع الصياغة المكتشف: {typeLabel}
-          </Text>
-        </View>
 
         {/* =================================================
             NOTES
@@ -887,8 +690,10 @@ export default function VisitAI() {
               {
                 backgroundColor:
                   c.card,
+
                 borderColor:
                   c.border,
+
                 color:
                   c.foreground,
               },
@@ -921,8 +726,10 @@ export default function VisitAI() {
               {
                 backgroundColor:
                   c.card,
+
                 borderColor:
                   c.border,
+
                 color:
                   c.foreground,
               },
@@ -953,8 +760,10 @@ export default function VisitAI() {
               {
                 backgroundColor:
                   c.card,
+
                 borderColor:
                   c.border,
+
                 color:
                   c.foreground,
               },
@@ -995,7 +804,7 @@ export default function VisitAI() {
               },
             ]}
           >
-            استخدام صياغتي في الزيارة
+            استخدام الصياغة في الزيارة
           </Text>
         </Pressable>
 
@@ -1070,6 +879,10 @@ const styles =
       flex: 1,
     },
 
+    /* =====================================================
+       HEADER
+    ===================================================== */
+
     header: {
       minHeight: 62,
       paddingHorizontal: 16,
@@ -1120,10 +933,18 @@ const styles =
       marginLeft: 8,
     },
 
+    /* =====================================================
+       CONTENT
+    ===================================================== */
+
     content: {
       paddingHorizontal: 15,
       paddingTop: 16,
     },
+
+    /* =====================================================
+       INFORMATION CARD
+    ===================================================== */
 
     infoCard: {
       borderWidth: 1,
@@ -1160,6 +981,10 @@ const styles =
       width: '100%',
     },
 
+    /* =====================================================
+       SECTION
+    ===================================================== */
+
     section: {
       marginBottom: 18,
     },
@@ -1178,6 +1003,10 @@ const styles =
         'Inter_600SemiBold',
       fontSize: 12,
     },
+
+    /* =====================================================
+       INPUT
+    ===================================================== */
 
     input: {
       minHeight: 90,
@@ -1199,6 +1028,10 @@ const styles =
       minHeight: 180,
     },
 
+    /* =====================================================
+       SMART BUTTON
+    ===================================================== */
+
     smartButton: {
       minHeight: 70,
       borderRadius: 18,
@@ -1208,7 +1041,7 @@ const styles =
       alignItems:
         'center',
       gap: 10,
-      marginBottom: 12,
+      marginBottom: 18,
     },
 
     smartIcon: {
@@ -1240,28 +1073,9 @@ const styles =
       marginTop: 3,
     },
 
-    detectedBox: {
-      minHeight: 38,
-      borderRadius: 12,
-      borderWidth: 1,
-      paddingHorizontal: 12,
-      flexDirection:
-        'row-reverse',
-      alignItems:
-        'center',
-      justifyContent:
-        'flex-start',
-      gap: 7,
-      marginBottom: 18,
-    },
-
-    detectedText: {
-      fontFamily:
-        'Inter_400Regular',
-      fontSize: 10,
-      textAlign:
-        'right',
-    },
+    /* =====================================================
+       USE BUTTON
+    ===================================================== */
 
     useButton: {
       minHeight: 54,
@@ -1281,6 +1095,10 @@ const styles =
         'Inter_700Bold',
       fontSize: 13,
     },
+
+    /* =====================================================
+       FOOTER
+    ===================================================== */
 
     footer: {
       textAlign:
