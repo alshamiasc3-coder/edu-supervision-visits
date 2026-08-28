@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "edu-supervision-ai",
+  "name": "edu-supervision-ai-worker",
   "main": "src/index.js",
   "compatibility_date": "2026-08-28",
   "secrets": {
