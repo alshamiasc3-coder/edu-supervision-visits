@@ -4,10 +4,13 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - ai-integration
 
 permissions:
   contents: read
+
+env:
+  EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
 
 jobs:
   build-apk:
