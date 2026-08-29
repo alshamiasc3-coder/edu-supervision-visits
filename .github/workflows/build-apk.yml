@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - ai-integration
 
 permissions:
   contents: read
@@ -13,6 +13,8 @@ jobs:
   build-apk:
     name: Build APK
     runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
 
     steps:
       - name: Checkout
@@ -37,6 +39,14 @@ jobs:
 
       - name: Generate Android project
         run: CI=1 npx expo prebuild --platform android --no-install
+
+      - name: Verify API URL
+        run: |
+          if [ -z "$EXPO_PUBLIC_API_URL" ]; then
+            echo "EXPO_PUBLIC_API_URL is not configured in GitHub repository variables."
+            exit 1
+          fi
+          echo "API URL configured: $EXPO_PUBLIC_API_URL"
 
       - name: Build release APK
         working-directory: android
