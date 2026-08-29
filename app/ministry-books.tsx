@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Alert, Image, Linking, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Feather } from '@expo/vector-icons';
@@ -23,6 +23,9 @@ export default function MinistryBooks() {
   const [selectedCategory, setSelectedCategory] = useState<MinistryBookCategory | 'الكل'>('الكل');
   const [search, setSearch] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [imageScale, setImageScale] = useState(1);
+  const [imageOffset, setImageOffset] = useState({ x: 0, y: 0 });
+  const gestureRef = useRef({ mode: 'none' as 'none' | 'pan' | 'pinch', startScale: 1, startDistance: 0, startX: 0, startY: 0, baseOffsetX: 0, baseOffsetY: 0 });
   const [title, setTitle] = useState('');
   const [bookNumber, setBookNumber] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -31,6 +34,48 @@ export default function MinistryBooks() {
   const [pdfUri, setPdfUri] = useState('');
   const [pdfName, setPdfName] = useState('');
   const [notes, setNotes] = useState('');
+
+  const resetZoom = () => { setImageScale(1); setImageOffset({ x: 0, y: 0 }); };
+  const closePreview = () => { setPreviewImage(null); resetZoom(); };
+  const distanceBetweenTouches = (touches: any[]) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].pageX - touches[1].pageX;
+    const dy = touches[0].pageY - touches[1].pageY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+  const imagePanResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt) => {
+      const touches = evt.nativeEvent.touches;
+      if (touches.length >= 2) {
+        const distance = distanceBetweenTouches(touches);
+        gestureRef.current = { ...gestureRef.current, mode: 'pinch', startScale: imageScale, startDistance: distance || 1 };
+      } else {
+        gestureRef.current = { ...gestureRef.current, mode: 'pan', startX: touches[0]?.pageX ?? 0, startY: touches[0]?.pageY ?? 0, baseOffsetX: imageOffset.x, baseOffsetY: imageOffset.y };
+      }
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      const touches = evt.nativeEvent.touches;
+      if (touches.length >= 2) {
+        if (gestureRef.current.mode !== 'pinch') {
+          const distance = distanceBetweenTouches(touches);
+          gestureRef.current = { ...gestureRef.current, mode: 'pinch', startScale: imageScale, startDistance: distance || 1 };
+        }
+        const distance = distanceBetweenTouches(touches);
+        const nextScale = Math.min(4, Math.max(1, gestureRef.current.startScale * (distance / (gestureRef.current.startDistance || 1))));
+        setImageScale(nextScale);
+        if (nextScale === 1) setImageOffset({ x: 0, y: 0 });
+      } else if (gestureRef.current.mode === 'pan' && imageScale > 1) {
+        setImageOffset({ x: gestureRef.current.baseOffsetX + gestureState.dx, y: gestureRef.current.baseOffsetY + gestureState.dy });
+      }
+    },
+    onPanResponderRelease: () => {
+      if (imageScale < 1.05) { setImageScale(1); setImageOffset({ x: 0, y: 0 }); }
+      gestureRef.current.mode = 'none';
+    },
+    onPanResponderTerminate: () => { gestureRef.current.mode = 'none'; },
+  })).current;
 
   const filteredBooks = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -114,8 +159,8 @@ export default function MinistryBooks() {
       {filteredBooks.length === 0 ? <View style={[styles.empty, { backgroundColor: c.card, borderColor: c.border }]}><Feather name="archive" size={34} color={c.primary} /><Text style={[styles.emptyTitle, { color: c.foreground }]}>لا توجد كتب وزارية</Text><Text style={{ color: c.mutedForeground, fontFamily: 'Inter_400Regular', fontSize: 11 }}>ابدأ بحفظ أول كتاب أو تعليمات.</Text></View> : filteredBooks.map(book => {
         const a = parseAttachments(book.imageUri);
         return <View key={book.id} style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
-          <View style={styles.thumb}>{a.imageUri ? <Pressable onPress={() => setPreviewImage(a.imageUri!)}><Image source={{ uri: a.imageUri }} style={styles.image} resizeMode="cover" /></Pressable> : <Feather name="file-text" size={34} color={c.primary} />}</View>
-          <View style={{ flex: 1, minWidth: 0 }}><View style={styles.titleRow}><Text style={[styles.bookTitle, { color: c.foreground }]} numberOfLines={2}>{book.title}</Text><View style={[styles.badge, { backgroundColor: categoryBg(book.category) }]}><Text style={{ color: c.primary, fontFamily: 'Inter_600SemiBold', fontSize: 9 }}>{book.category}</Text></View></View><Text style={[styles.meta, { color: c.mutedForeground }]}>رقم الكتاب: {book.bookNumber}</Text><Text style={[styles.meta, { color: c.mutedForeground }]}>تاريخ الكتاب: {book.date}</Text>{book.notes ? <Text style={[styles.notes, { color: c.mutedForeground }]} numberOfLines={2}>{book.notes}</Text> : null}<View style={styles.actions}>{a.imageUri ? <Pressable onPress={() => setPreviewImage(a.imageUri!)} style={[styles.action, { backgroundColor: c.secondary }]}><Feather name="image" size={15} color={c.primary} /><Text style={{ color: c.primary, fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>عرض الصورة</Text></Pressable> : null}{a.pdfUri ? <Pressable onPress={() => openAttachment(a.pdfUri!)} style={[styles.action, { backgroundColor: '#EAF3FF' }]}><Feather name="file" size={15} color="#2878B8" /><Text style={{ color: '#2878B8', fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>فتح PDF</Text></Pressable> : null}<Pressable onPress={() => openEditForm(book)} style={[styles.action, { backgroundColor: c.secondary }]}><Feather name="edit-2" size={15} color={c.primary} /><Text style={{ color: c.primary, fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>تعديل</Text></Pressable><Pressable onPress={() => confirmDelete(book)} style={[styles.action, { backgroundColor: '#FDE7E7' }]}><Feather name="trash-2" size={15} color="#C62828" /><Text style={{ color: '#C62828', fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>حذف</Text></Pressable></View>{a.pdfName ? <Text style={{ color: c.mutedForeground, fontFamily: 'Inter_400Regular', fontSize: 9, textAlign: 'right', marginTop: 4 }} numberOfLines={1}>📄 {a.pdfName}</Text> : null}</View>
+          <View style={styles.thumb}>{a.imageUri ? <Pressable onPress={() => { resetZoom(); setPreviewImage(a.imageUri!); }}><Image source={{ uri: a.imageUri }} style={styles.image} resizeMode="cover" /></Pressable> : <Feather name="file-text" size={34} color={c.primary} />}</View>
+          <View style={{ flex: 1, minWidth: 0 }}><View style={styles.titleRow}><Text style={[styles.bookTitle, { color: c.foreground }]} numberOfLines={2}>{book.title}</Text><View style={[styles.badge, { backgroundColor: categoryBg(book.category) }]}><Text style={{ color: c.primary, fontFamily: 'Inter_600SemiBold', fontSize: 9 }}>{book.category}</Text></View></View><Text style={[styles.meta, { color: c.mutedForeground }]}>رقم الكتاب: {book.bookNumber}</Text><Text style={[styles.meta, { color: c.mutedForeground }]}>تاريخ الكتاب: {book.date}</Text>{book.notes ? <Text style={[styles.notes, { color: c.mutedForeground }]} numberOfLines={2}>{book.notes}</Text> : null}<View style={styles.actions}>{a.imageUri ? <Pressable onPress={() => { resetZoom(); setPreviewImage(a.imageUri!); }} style={[styles.action, { backgroundColor: c.secondary }]}><Feather name="image" size={15} color={c.primary} /><Text style={{ color: c.primary, fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>عرض الصورة</Text></Pressable> : null}{a.pdfUri ? <Pressable onPress={() => openAttachment(a.pdfUri!)} style={[styles.action, { backgroundColor: '#EAF3FF' }]}><Feather name="file" size={15} color="#2878B8" /><Text style={{ color: '#2878B8', fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>فتح PDF</Text></Pressable> : null}<Pressable onPress={() => openEditForm(book)} style={[styles.action, { backgroundColor: c.secondary }]}><Feather name="edit-2" size={15} color={c.primary} /><Text style={{ color: c.primary, fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>تعديل</Text></Pressable><Pressable onPress={() => confirmDelete(book)} style={[styles.action, { backgroundColor: '#FDE7E7' }]}><Feather name="trash-2" size={15} color="#C62828" /><Text style={{ color: '#C62828', fontFamily: 'Inter_600SemiBold', fontSize: 10 }}>حذف</Text></Pressable></View>{a.pdfName ? <Text style={{ color: c.mutedForeground, fontFamily: 'Inter_400Regular', fontSize: 9, textAlign: 'right', marginTop: 4 }} numberOfLines={1}>📄 {a.pdfName}</Text> : null}</View>
         </View>;
       })}
       <View style={{ height: 45 }} />
@@ -143,7 +188,14 @@ export default function MinistryBooks() {
       </View></View>
     </Modal>
 
-    <Modal visible={!!previewImage} animationType="fade" transparent onRequestClose={() => setPreviewImage(null)}><View style={styles.preview}><Pressable onPress={() => setPreviewImage(null)} style={styles.closePreview}><Feather name="x" size={25} color="#fff" /></Pressable>{previewImage ? <Image source={{ uri: previewImage }} style={styles.fullImage} resizeMode="contain" /> : null}</View></Modal>
+    <Modal visible={!!previewImage} animationType="fade" transparent onRequestClose={closePreview}>
+      <View style={styles.preview}>
+        <Pressable onPress={closePreview} style={styles.closePreview}><Feather name="x" size={25} color="#fff" /></Pressable>
+        <View style={styles.zoomHint}><Feather name="zoom-in" size={15} color="#fff" /><Text style={styles.zoomHintText}>كبّر بإصبعين واسحب الصورة للمراجعة</Text></View>
+        {previewImage ? <View style={styles.zoomViewport} {...imagePanResponder.panHandlers}><Image source={{ uri: previewImage }} style={[styles.fullImage, { transform: [{ translateX: imageOffset.x }, { translateY: imageOffset.y }, { scale: imageScale }] }]} resizeMode="contain" /></View> : null}
+        {imageScale > 1.05 ? <Pressable onPress={resetZoom} style={styles.resetZoom}><Feather name="minimize-2" size={16} color="#fff" /><Text style={styles.resetZoomText}>إعادة الحجم</Text></Pressable> : null}
+      </View>
+    </Modal>
   </View>;
 }
 
@@ -158,5 +210,5 @@ const styles = StyleSheet.create({
   card: { borderRadius: 18, borderWidth: 1, padding: 11, flexDirection: 'row-reverse', gap: 12, marginBottom: 10, minHeight: 150 }, thumb: { width: 105, height: 135, borderRadius: 13, overflow: 'hidden', backgroundColor: '#EEF5F4', alignItems: 'center', justifyContent: 'center' }, image: { width: '100%', height: '100%' }, titleRow: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 7 }, bookTitle: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: 'Inter_700Bold', textAlign: 'right' }, badge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 5 }, meta: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'right', marginTop: 7 }, notes: { fontSize: 10, lineHeight: 16, fontFamily: 'Inter_400Regular', textAlign: 'right', marginTop: 5 }, actions: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 9 }, action: { borderRadius: 9, paddingHorizontal: 8, paddingVertical: 7, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 5 },
   empty: { borderRadius: 20, borderWidth: 1, padding: 30, alignItems: 'center', gap: 8 }, emptyTitle: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,.45)', justifyContent: 'flex-end' }, modal: { maxHeight: '94%', borderTopLeftRadius: 25, borderTopRightRadius: 25, paddingHorizontal: 17, paddingTop: 15 }, modalHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }, modalTitle: { fontSize: 18, fontFamily: 'Inter_700Bold' }, label: { fontSize: 12, fontFamily: 'Inter_600SemiBold', textAlign: 'right', marginTop: 14, marginBottom: 7 }, input: { minHeight: 48, borderRadius: 13, borderWidth: 1, paddingHorizontal: 12, fontFamily: 'Inter_400Regular', fontSize: 12, textAlign: 'right' }, notesInput: { minHeight: 105, borderRadius: 13, borderWidth: 1, padding: 12, fontFamily: 'Inter_400Regular', fontSize: 12, textAlign: 'right' }, attachmentRow: { flexDirection: 'row-reverse', gap: 8 }, attachBtn: { flex: 1, minHeight: 52, borderRadius: 13, borderWidth: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7 }, filePill: { minHeight: 58, borderRadius: 13, borderWidth: 1, padding: 7, marginTop: 8, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }, smallImage: { width: 44, height: 44, borderRadius: 8 }, pdfIcon: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#EAF3FF', alignItems: 'center', justifyContent: 'center' }, formCats: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7 }, save: { minHeight: 51, borderRadius: 14, marginTop: 20, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8 }, saveText: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' }, cancel: { minHeight: 48, borderRadius: 14, borderWidth: 1, marginTop: 9, alignItems: 'center', justifyContent: 'center' },
-  preview: { flex: 1, backgroundColor: 'rgba(0,0,0,.94)', alignItems: 'center', justifyContent: 'center', padding: 15 }, closePreview: { position: 'absolute', top: Platform.OS === 'web' ? 20 : 55, right: 20, width: 45, height: 45, borderRadius: 14, backgroundColor: 'rgba(255,255,255,.15)', alignItems: 'center', justifyContent: 'center', zIndex: 5 }, fullImage: { width: '100%', height: '82%' }
+  preview: { flex: 1, backgroundColor: 'rgba(0,0,0,.94)', alignItems: 'center', justifyContent: 'center', padding: 15 }, closePreview: { position: 'absolute', top: Platform.OS === 'web' ? 20 : 55, right: 20, width: 45, height: 45, borderRadius: 14, backgroundColor: 'rgba(255,255,255,.15)', alignItems: 'center', justifyContent: 'center', zIndex: 5 }, zoomViewport: { width: '100%', height: '82%', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }, fullImage: { width: '100%', height: '100%' }, zoomHint: { position: 'absolute', top: Platform.OS === 'web' ? 22 : 58, left: 20, flexDirection: 'row-reverse', alignItems: 'center', gap: 5, zIndex: 5, backgroundColor: 'rgba(0,0,0,.42)', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 7 }, zoomHintText: { color: '#fff', fontFamily: 'Inter_400Regular', fontSize: 9 }, resetZoom: { position: 'absolute', bottom: 25, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,.16)', borderRadius: 11, paddingHorizontal: 11, paddingVertical: 8 }, resetZoomText: { color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 10 }
 });
