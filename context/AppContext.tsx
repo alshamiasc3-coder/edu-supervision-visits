@@ -95,6 +95,11 @@ export type Staffing = {
   stage?: string;
   district?: string;
   notes?: string;
+
+  /*
+   * أسماء المدرسين - اختيارية
+   */
+  teacherNames?: string[];
 };
 
 /*
@@ -632,8 +637,39 @@ export function StoreProvider({
            * الملاك
            */
           setStaffing(
-            d.staffing ??
+            (
+              d.staffing ??
               seedStaffing
+            ).map(
+              (record: any): Staffing => ({
+                ...record,
+                id: String(
+                  record.id ?? id()
+                ),
+                schoolId: String(
+                  record.schoolId ?? ''
+                ),
+                specialty: String(
+                  record.specialty ?? ''
+                ),
+                required: Number(
+                  record.required ?? 0
+                ),
+                current: Number(
+                  record.current ?? 0
+                ),
+                teacherNames:
+                  Array.isArray(
+                    record.teacherNames
+                  )
+                    ? record.teacherNames
+                        .map((name: any) =>
+                          String(name ?? '').trim()
+                        )
+                        .filter(Boolean)
+                    : [],
+              })
+            )
           );
 
           /*

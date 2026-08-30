@@ -41,6 +41,7 @@ export default function SchoolDetail() {
   const [stage, setStage] = useState('');
   const [district, setDistrict] = useState('');
   const [notes, setNotes] = useState('');
+  const [teacherNames, setTeacherNames] = useState('');
 
   const school = schools.find((s) => s.id === id);
 
@@ -120,6 +121,7 @@ export default function SchoolDetail() {
     setStage('');
     setDistrict('');
     setNotes('');
+    setTeacherNames('');
   };
 
   const openAddStaffing = () => {
@@ -135,6 +137,9 @@ export default function SchoolDetail() {
     setStage(record.stage || '');
     setDistrict(record.district || '');
     setNotes(record.notes || '');
+    setTeacherNames(
+      (record.teacherNames || []).join(', ')
+    );
     setStaffingModalVisible(true);
   };
 
@@ -174,6 +179,10 @@ export default function SchoolDetail() {
       stage: stage.trim(),
       district: district.trim(),
       notes: notes.trim(),
+      teacherNames: teacherNames
+        .split(',')
+        .map((name) => name.trim())
+        .filter(Boolean),
     };
 
     if (editingStaffing) {
@@ -580,6 +589,54 @@ export default function SchoolDetail() {
                     </View>
                   </View>
 
+                  {record.teacherNames?.length ? (
+                    <View style={styles.teacherNamesBox}>
+                      <View style={styles.teacherNamesHeader}>
+                        <Feather
+                          name="users"
+                          size={14}
+                          color={c.primary}
+                        />
+                        <Text
+                          style={[
+                            styles.teacherNamesTitle,
+                            { color: c.foreground },
+                          ]}
+                        >
+                          أسماء المدرسين
+                        </Text>
+                      </View>
+
+                      <View style={styles.teacherNamesList}>
+                        {record.teacherNames.map(
+                          (teacherName, teacherIndex) => (
+                            <View
+                              key={`${record.id}-teacher-${teacherIndex}`}
+                              style={[
+                                styles.teacherNameChip,
+                                {
+                                  backgroundColor: c.secondary,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.teacherNameText,
+                                  {
+                                    color:
+                                      c.secondaryForeground,
+                                  },
+                                ]}
+                              >
+                                {teacherName}
+                              </Text>
+                            </View>
+                          )
+                        )}
+                      </View>
+                    </View>
+                  ) : null}
+
                   {(record.stage || record.district || record.notes) ? (
                     <View style={styles.staffingMeta}>
                       {record.stage ? (
@@ -885,7 +942,12 @@ export default function SchoolDetail() {
       >
         <KeyboardAvoidingView
           style={styles.modalRoot}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={
+            Platform.OS === 'ios'
+              ? 'padding'
+              : 'height'
+          }
+          keyboardVerticalOffset={0}
         >
           <Pressable
             style={styles.modalBackdrop}
@@ -930,6 +992,9 @@ export default function SchoolDetail() {
 
             <ScrollView
               keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+              style={styles.modalScroll}
               contentContainerStyle={styles.modalContent}
             >
               <Field
@@ -973,6 +1038,15 @@ export default function SchoolDetail() {
                 value={district}
                 onChangeText={setDistrict}
                 placeholder="مثال: الجامعة - بغداد"
+                c={c}
+              />
+
+              <Field
+                label="أسماء المدرسين (اختياري)"
+                value={teacherNames}
+                onChangeText={setTeacherNames}
+                placeholder="أحمد علي، محمد حسن، ..."
+                helper="يمكن إضافة أكثر من اسم وفصل الأسماء بفاصلة"
                 c={c}
               />
 
@@ -1038,6 +1112,7 @@ function Field({
   value,
   onChangeText,
   placeholder,
+  helper,
   keyboardType,
   multiline,
   c,
@@ -1046,6 +1121,7 @@ function Field({
   value: string;
   onChangeText: (value: string) => void;
   placeholder?: string;
+  helper?: string;
   keyboardType?: 'default' | 'number-pad';
   multiline?: boolean;
   c: any;
@@ -1079,6 +1155,16 @@ function Field({
           },
         ]}
       />
+      {helper ? (
+        <Text
+          style={[
+            styles.fieldHelper,
+            { color: c.mutedForeground },
+          ]}
+        >
+          {helper}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -1441,8 +1527,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  modalScroll: {
+    flexGrow: 0,
+  },
+
   modalContent: {
-    paddingBottom: 8,
+    paddingBottom: 24,
   },
 
   field: {
@@ -1466,6 +1556,49 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 12,
     textAlignVertical: 'top',
+  },
+
+  teacherNamesBox: {
+    marginTop: 11,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(127, 127, 127, 0.18)',
+  },
+
+  teacherNamesHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 7,
+  },
+
+  teacherNamesTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+  },
+
+  teacherNamesList: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+
+  teacherNameChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 9,
+  },
+
+  teacherNameText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+  },
+
+  fieldHelper: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
+    textAlign: 'right',
+    marginTop: 4,
   },
 
   modalTwoColumns: {

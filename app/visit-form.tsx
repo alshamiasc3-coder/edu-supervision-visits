@@ -3,7 +3,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 import {
+  Animated,
+  Dimensions,
   Image,
+  Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +26,19 @@ import {
 } from 'expo-router';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
 
 import { useColors } from '@/hooks/useColors';
 
@@ -246,12 +263,26 @@ export default function VisitForm() {
      PHOTO
   ======================================================= */
 
+  /*
+   * صور سجل الزيارة:
+   * - ندعم عدة صور بدل صورة واحدة.
+   * - نبقي photoUri عند الحفظ كأول صورة للتوافق
+   *   مع الزيارات القديمة والمكونات التي تتوقع صورة واحدة.
+   */
   const [
-    photoUri,
-    setPhotoUri,
-  ] = useState<
-    string | undefined
-  >(undefined);
+    photoUris,
+    setPhotoUris,
+  ] = useState<string[]>([]);
+
+  const [
+    previewVisible,
+    setPreviewVisible,
+  ] = useState(false);
+
+  const [
+    previewIndex,
+    setPreviewIndex,
+  ] = useState(0);
 
   /* =======================================================
      SAVE STATE
@@ -412,9 +443,41 @@ export default function VisitForm() {
       )
     );
 
-    setPhotoUri(
-      existingVisit.photoUri
-    );
+    const legacyPhoto =
+      String(
+        existingVisit.photoUri ||
+          ''
+      ).trim();
+
+    const savedPhotos =
+      (existingVisit as any)
+        .photoUris;
+
+    if (
+      Array.isArray(
+        savedPhotos
+      )
+    ) {
+      setPhotoUris(
+        savedPhotos.filter(
+          (uri: any) =>
+            typeof uri === 'string' &&
+            uri.trim().length > 0
+        )
+      );
+    } else if (
+      legacyPhoto
+    ) {
+      /*
+       * توافق مع الزيارات القديمة
+       * التي كانت تحفظ صورة واحدة.
+       */
+      setPhotoUris([
+        legacyPhoto,
+      ]);
+    } else {
+      setPhotoUris([]);
+    }
   }, [
     existingVisit,
   ]);
@@ -569,8 +632,14 @@ export default function VisitForm() {
           result.assets.length >
             0
         ) {
-          setPhotoUri(
-            result.assets[0].uri
+          const newUri =
+            result.assets[0].uri;
+
+          setPhotoUris(
+            (current) => [
+              ...current,
+              newUri,
+            ]
           );
 
           clearMessage();
@@ -590,6 +659,44 @@ export default function VisitForm() {
         );
       }
     };
+
+  /* =======================================================
+     PHOTO PREVIEW
+  ======================================================= */
+
+  const openPhotoPreview = (
+    index: number
+  ) => {
+    setPreviewIndex(index);
+    setPreviewVisible(true);
+  };
+
+  const closePhotoPreview = () => {
+    setPreviewVisible(false);
+  };
+
+  const removePhoto = (
+    index: number
+  ) => {
+    setPhotoUris(
+      (current) =>
+        current.filter(
+          (_, i) => i !== index
+        )
+    );
+
+    if (
+      previewIndex >=
+      photoUris.length - 1
+    ) {
+      setPreviewIndex(
+        Math.max(
+          0,
+          photoUris.length - 2
+        )
+      );
+    }
+  };
 
   /* =======================================================
      OPEN AI
@@ -814,8 +921,18 @@ export default function VisitForm() {
             existingVisit?.status ||
             'completed',
 
+          /*
+           * التوافق مع الحقول القديمة:
+           * photoUri = أول صورة.
+           *
+           * الحقل الجديد:
+           * photoUris = جميع صور صفحات السجل.
+           */
           photoUri:
-            photoUri,
+            photoUris[0],
+
+          photoUris:
+            photoUris,
         };
 
         console.log(
@@ -1611,8 +1728,8 @@ export default function VisitForm() {
                 },
               ]}
             >
-              {photoUri
-                ? 'تم إرفاق صورة السجل'
+              {photoUris.length > 0
+                ? `تم إرفاق ${photoUris.length} ${photoUris.length === 1 ? 'صورة' : 'صور'} للسجل`
                 : 'تصوير سجل الزيارة'}
             </Text>
 
@@ -1638,52 +1755,161 @@ export default function VisitForm() {
           />
         </Pressable>
 
-        {/* الصورة */}
+        {/* صور سجل الزيارة */}
 
-        {photoUri ? (
-          <View>
-            <Image
-              source={{
-                uri: photoUri,
-              }}
+        {photoUris.length > 0 ? (
+          <View
+            style={
+              styles.photosSection
+            }
+          >
+            <View
               style={
-                styles.preview
+                styles.photosHeader
               }
-            />
+            >
+              <Text
+                style={[
+                  styles.photosCount,
+                  {
+                    color:
+                      c.mutedForeground,
+                  },
+                ]}
+              >
+                {photoUris.length}{' '}
+                {photoUris.length === 1
+                  ? 'صورة'
+                  : 'صور'}{' '}
+                للسجل
+              </Text>
 
-            <Pressable
-              onPress={() =>
-                setPhotoUri(
-                  undefined
+              <Text
+                style={[
+                  styles.photosTitle,
+                  {
+                    color:
+                      c.foreground,
+                  },
+                ]}
+              >
+                صفحات سجل الزيارة
+              </Text>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={
+                false
+              }
+              contentContainerStyle={
+                styles.photoList
+              }
+            >
+              {photoUris.map(
+                (
+                  uri,
+                  index
+                ) => (
+                  <View
+                    key={`${uri}-${index}`}
+                    style={
+                      styles.photoItem
+                    }
+                  >
+                    <Pressable
+                      onPress={() =>
+                        openPhotoPreview(
+                          index
+                        )
+                      }
+                      style={
+                        styles.photoThumbButton
+                      }
+                    >
+                      <Image
+                        source={{
+                          uri,
+                        }}
+                        style={
+                          styles.photoThumb
+                        }
+                      />
+
+                      <View
+                        style={
+                          styles.photoNumber
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.photoNumberText
+                          }
+                        >
+                          {index + 1}
+                        </Text>
+                      </View>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() =>
+                        removePhoto(
+                          index
+                        )
+                      }
+                      style={
+                        styles.photoDelete
+                      }
+                    >
+                      <Feather
+                        name="trash-2"
+                        size={14}
+                        color="#B42318"
+                      />
+
+                      <Text
+                        style={
+                          styles.photoDeleteText
+                        }
+                      >
+                        حذف
+                      </Text>
+                    </Pressable>
+                  </View>
                 )
-              }
-              style={[
-                styles.removePhoto,
-                {
-                  backgroundColor:
-                    c.card,
+              )}
+            </ScrollView>
 
-                  borderColor:
-                    c.border,
+            <Text
+              style={[
+                styles.photoHint,
+                {
+                  color:
+                    c.mutedForeground,
                 },
               ]}
             >
-              <Feather
-                name="trash-2"
-                size={16}
-                color="#B42318"
-              />
-
-              <Text
-                style={
-                  styles.removePhotoText
-                }
-              >
-                حذف الصورة
-              </Text>
-            </Pressable>
+              اضغط على أي صورة لعرضها وتكبيرها بإصبعين.
+            </Text>
           </View>
         ) : null}
+
+        {/* معاينة الصور والتكبير */}
+
+        <PhotoPreviewModal
+          visible={
+            previewVisible
+          }
+          photos={
+            photoUris
+          }
+          initialIndex={
+            previewIndex
+          }
+          onClose={
+            closePhotoPreview
+          }
+        />
 
         {/* الرسالة */}
 
@@ -1807,6 +2033,360 @@ export default function VisitForm() {
         </Text>
       </ScrollView>
     </View>
+  );
+}
+
+/* =========================================================
+   PHOTO PREVIEW MODAL
+========================================================= */
+
+function PhotoPreviewModal({
+  visible,
+  photos,
+  initialIndex,
+  onClose,
+}: {
+  visible: boolean;
+  photos: string[];
+  initialIndex: number;
+  onClose: () => void;
+}) {
+  const [index, setIndex] =
+    useState(initialIndex);
+
+  useEffect(() => {
+    if (visible) {
+      setIndex(initialIndex);
+    }
+  }, [
+    visible,
+    initialIndex,
+  ]);
+
+  if (
+    !photos.length
+  ) {
+    return null;
+  }
+
+  const safeIndex = Math.min(
+    Math.max(index, 0),
+    photos.length - 1
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={
+        onClose
+      }
+    >
+      <GestureHandlerRootView
+        style={{ flex: 1 }}
+      >
+        <View
+          style={
+            styles.previewModal
+          }
+        >
+        <View
+          style={
+            styles.previewTopBar
+          }
+        >
+          <Pressable
+            onPress={
+              onClose
+            }
+            style={
+              styles.previewClose
+            }
+          >
+            <Feather
+              name="x"
+              size={24}
+              color="#FFFFFF"
+            />
+          </Pressable>
+
+          <Text
+            style={
+              styles.previewCounter
+            }
+          >
+            {safeIndex + 1} / {photos.length}
+          </Text>
+        </View>
+
+        <View
+          style={
+            styles.previewImageArea
+          }
+        >
+          <ZoomableImage
+            key={`${photos[safeIndex]}-${safeIndex}`}
+            uri={
+              photos[safeIndex]
+            }
+          />
+        </View>
+
+        {photos.length > 1 ? (
+          <View
+            style={
+              styles.previewNavigation
+            }
+          >
+            <Pressable
+              disabled={
+                safeIndex >=
+                photos.length - 1
+              }
+              onPress={() =>
+                setIndex(
+                  (current) =>
+                    Math.min(
+                      current + 1,
+                      photos.length - 1
+                    )
+                )
+              }
+              style={[
+                styles.previewNavButton,
+                safeIndex >=
+                photos.length - 1
+                  ? {
+                      opacity: 0.35,
+                    }
+                  : null,
+              ]}
+            >
+              <Feather
+                name="chevron-right"
+                size={28}
+                color="#FFFFFF"
+              />
+            </Pressable>
+
+            <Text
+              style={
+                styles.previewNavText
+              }
+            >
+              اسحب بين الصفحات أو استخدم الأسهم
+            </Text>
+
+            <Pressable
+              disabled={
+                safeIndex <= 0
+              }
+              onPress={() =>
+                setIndex(
+                  (current) =>
+                    Math.max(
+                      current - 1,
+                      0
+                    )
+                )
+              }
+              style={[
+                styles.previewNavButton,
+                safeIndex <= 0
+                  ? {
+                      opacity: 0.35,
+                    }
+                  : null,
+              ]}
+            >
+              <Feather
+                name="chevron-left"
+                size={28}
+                color="#FFFFFF"
+              />
+            </Pressable>
+          </View>
+        ) : (
+          <Text
+            style={
+              styles.previewZoomHint
+            }
+          >
+            باعد بين إصبعين للتكبير وقرّبهما للتصغير
+          </Text>
+        )}
+        </View>
+      </GestureHandlerRootView>
+    </Modal>
+  );
+}
+
+function ZoomableImage({
+  uri,
+}: {
+  uri: string;
+}) {
+  const { width, height } =
+    Dimensions.get('window');
+
+  const baseWidth = width * 0.94;
+
+  const baseHeight = Math.min(
+    height * 0.72,
+    baseWidth * 1.35
+  );
+
+  /*
+   * تكبير وحركة الصورة باستخدام Gesture API الحديث.
+   * هذا يتجنب PanResponder تمامًا ويعتمد على
+   * react-native-gesture-handler + reanimated
+   * الموجودتين أصلًا في المشروع.
+   */
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  const resetZoom = () => {
+    scale.value = withSpring(1);
+    savedScale.value = 1;
+
+    translateX.value = withSpring(0);
+    translateY.value = withSpring(0);
+
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+  };
+
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      savedScale.value = scale.value;
+    })
+    .onUpdate((event) => {
+      const nextScale =
+        savedScale.value * event.scale;
+
+      scale.value = Math.min(
+        4,
+        Math.max(1, nextScale)
+      );
+    })
+    .onEnd(() => {
+      if (scale.value <= 1.01) {
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+
+        translateX.value =
+          withSpring(0);
+        translateY.value =
+          withSpring(0);
+
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else {
+        savedScale.value = scale.value;
+      }
+    });
+
+  const panGesture = Gesture.Pan()
+    .minPointers(1)
+    .maxPointers(1)
+    .onStart(() => {
+      savedTranslateX.value =
+        translateX.value;
+      savedTranslateY.value =
+        translateY.value;
+    })
+    .onUpdate((event) => {
+      if (scale.value <= 1.01) {
+        return;
+      }
+
+      translateX.value =
+        savedTranslateX.value +
+        event.translationX;
+
+      translateY.value =
+        savedTranslateY.value +
+        event.translationY;
+    })
+    .onEnd(() => {
+      if (scale.value <= 1.01) {
+        translateX.value =
+          withSpring(0);
+        translateY.value =
+          withSpring(0);
+      }
+    });
+
+  const doubleTapGesture =
+    Gesture.Tap()
+      .numberOfTaps(2)
+      .maxDuration(250)
+      .onEnd(() => {
+        if (scale.value > 1.01) {
+          runOnJS(resetZoom)();
+        } else {
+          scale.value =
+            withSpring(2);
+          savedScale.value = 2;
+        }
+      });
+
+  const composedGesture =
+    Gesture.Simultaneous(
+      pinchGesture,
+      panGesture
+    );
+
+  const finalGesture =
+    Gesture.Exclusive(
+      doubleTapGesture,
+      composedGesture
+    );
+
+  const animatedStyle =
+    useAnimatedStyle(() => ({
+      transform: [
+        {
+          translateX:
+            translateX.value,
+        },
+        {
+          translateY:
+            translateY.value,
+        },
+        {
+          scale: scale.value,
+        },
+      ],
+    }));
+
+  return (
+    <GestureDetector
+      gesture={finalGesture}
+    >
+      <View
+        style={styles.zoomCanvas}
+      >
+        <Reanimated.Image
+          source={{ uri }}
+          resizeMode="contain"
+          style={[
+            {
+              width: baseWidth,
+              height: baseHeight,
+            },
+            animatedStyle,
+          ]}
+        />
+      </View>
+    </GestureDetector>
   );
 }
 
@@ -2227,6 +2807,221 @@ const styles =
       fontSize: 11,
       color:
         '#B42318',
+    },
+
+    photosSection: {
+      marginTop: 10,
+      borderRadius: 15,
+      padding: 11,
+      backgroundColor:
+        'rgba(0,0,0,0.025)',
+    },
+
+    photosHeader: {
+      flexDirection:
+        'row-reverse',
+      alignItems:
+        'center',
+      justifyContent:
+        'space-between',
+      marginBottom: 9,
+    },
+
+    photosTitle: {
+      fontFamily:
+        'Inter_600SemiBold',
+      fontSize: 12,
+      textAlign:
+        'right',
+    },
+
+    photosCount: {
+      fontFamily:
+        'Inter_500Medium',
+      fontSize: 10,
+    },
+
+    photoList: {
+      flexDirection:
+        'row-reverse',
+      gap: 9,
+      paddingVertical: 2,
+    },
+
+    photoItem: {
+      width: 92,
+    },
+
+    photoThumbButton: {
+      width: 92,
+      height: 118,
+      borderRadius: 12,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+
+    photoThumb: {
+      width: '100%',
+      height: '100%',
+    },
+
+    photoNumber: {
+      position: 'absolute',
+      top: 6,
+      right: 6,
+      minWidth: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+      backgroundColor:
+        'rgba(0,0,0,0.65)',
+    },
+
+    photoNumberText: {
+      color: '#FFFFFF',
+      fontFamily:
+        'Inter_700Bold',
+      fontSize: 10,
+    },
+
+    photoDelete: {
+      minHeight: 34,
+      marginTop: 5,
+      borderWidth: 1,
+      borderColor: '#E5A3A3',
+      borderRadius: 9,
+      flexDirection:
+        'row-reverse',
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+      gap: 5,
+      backgroundColor:
+        '#FFFFFF',
+    },
+
+    photoDeleteText: {
+      fontFamily:
+        'Inter_500Medium',
+      fontSize: 10,
+      color: '#B42318',
+    },
+
+    photoHint: {
+      fontFamily:
+        'Inter_400Regular',
+      fontSize: 9,
+      textAlign: 'right',
+      marginTop: 8,
+    },
+
+    previewModal: {
+      flex: 1,
+      backgroundColor:
+        'rgba(0,0,0,0.96)',
+    },
+
+    previewTopBar: {
+      height: 58,
+      paddingHorizontal: 14,
+      flexDirection:
+        'row-reverse',
+      alignItems:
+        'center',
+      justifyContent:
+        'space-between',
+    },
+
+    previewClose: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+      backgroundColor:
+        'rgba(255,255,255,0.12)',
+    },
+
+    previewCounter: {
+      color: '#FFFFFF',
+      fontFamily:
+        'Inter_600SemiBold',
+      fontSize: 12,
+    },
+
+    previewImageArea: {
+      flex: 1,
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+    },
+
+    zoomCanvas: {
+      flex: 1,
+      width: '100%',
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+      overflow: 'hidden',
+    },
+
+    zoomImageWrapper: {
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+    },
+
+    previewNavigation: {
+      minHeight: 62,
+      paddingHorizontal: 14,
+      paddingBottom: 8,
+      flexDirection:
+        'row',
+      alignItems:
+        'center',
+      justifyContent:
+        'space-between',
+      gap: 8,
+    },
+
+    previewNavButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+      backgroundColor:
+        'rgba(255,255,255,0.12)',
+    },
+
+    previewNavText: {
+      flex: 1,
+      color: '#FFFFFF',
+      fontFamily:
+        'Inter_400Regular',
+      fontSize: 9,
+      textAlign: 'center',
+    },
+
+    previewZoomHint: {
+      color: '#FFFFFF',
+      fontFamily:
+        'Inter_400Regular',
+      fontSize: 9,
+      textAlign: 'center',
+      paddingBottom: 14,
+      opacity: 0.8,
     },
 
     messageBox: {
