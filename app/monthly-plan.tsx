@@ -34,9 +34,33 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - 2 + i);
 
 function getDateParts(value: string) {
-  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  return { year: Number(match[1]), monthIndex: Number(match[2]) - 1 };
+  const normalized = value.trim().replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
+  let match = normalized.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (!isValidDate(year, month, day)) return null;
+    return { year, monthIndex: month - 1, day, iso: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` };
+  }
+
+  match = normalized.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (match) {
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+    if (!isValidDate(year, month, day)) return null;
+    return { year, monthIndex: month - 1, day, iso: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` };
+  }
+
+  return null;
+}
+
+function isValidDate(year: number, month: number, day: number) {
+  if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
 export default function MonthlyPlanScreen() {
@@ -90,7 +114,7 @@ export default function MonthlyPlanScreen() {
 
     const parts = getDateParts(targetDate);
     if (!parts) {
-      Alert.alert('تاريخ غير صحيح', 'استخدم صيغة التاريخ YYYY-MM-DD.');
+      Alert.alert('تاريخ غير صحيح', 'استخدم تاريخًا صحيحًا مثل 20/08/2026 أو 2026-08-20.');
       return;
     }
     if (parts.year !== selectedYear || parts.monthIndex !== selectedMonth) {
@@ -108,7 +132,7 @@ export default function MonthlyPlanScreen() {
       priority: 'medium',
       notes: description.trim() || 'لا توجد ملاحظات إضافية.',
       done: false,
-      date: targetDate.trim(),
+      date: parts.iso,
       planStatus: 'planned',
     });
 
@@ -228,8 +252,8 @@ export default function MonthlyPlanScreen() {
             <Text style={styles.label}>وصف المهمة</Text>
             <TextInput value={description} onChangeText={setDescription} placeholder="اكتب تفاصيل العمل أو الهدف منه..." placeholderTextColor="#999" style={[styles.input, styles.textArea]} textAlign="right" multiline />
             <Text style={styles.label}>التاريخ المستهدف</Text>
-            <TextInput value={targetDate} onChangeText={setTargetDate} placeholder={`مثال: ${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-20`} placeholderTextColor="#999" style={styles.input} textAlign="right" />
-            <Text style={styles.dateHint}>يجب أن يكون التاريخ ضمن {MONTHS[selectedMonth]} {selectedYear}.</Text>
+            <TextInput value={targetDate} onChangeText={setTargetDate} placeholder={`مثال: ${String(20).padStart(2, '0')}/${String(selectedMonth + 1).padStart(2, '0')}/${selectedYear}`} placeholderTextColor="#999" style={styles.input} textAlign="right" keyboardType="numbers-and-punctuation" />
+            <Text style={styles.dateHint}>يمكنك كتابة التاريخ مثل 20/08/2026 أو 2026-08-20، ويجب أن يكون ضمن {MONTHS[selectedMonth]} {selectedYear}.</Text>
             <Pressable style={styles.saveButton} onPress={addPlanItem}><Feather name="save" size={19} color="#ffffff" /><Text style={styles.saveButtonText}>حفظ المهمة</Text></Pressable>
           </View>
         )}
