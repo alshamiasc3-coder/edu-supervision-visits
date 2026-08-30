@@ -37,7 +37,7 @@ export type Visit = {
   schoolId: string;
   date: string;
   type: string;
-
+  planTaskId?: string;
   /*
    * سبب الزيارة
    */
@@ -828,17 +828,46 @@ export function StoreProvider({
    */
 
   const addVisit = (
-    data: Omit<Visit, 'id'>
-  ) =>
-    setVisits(
-      (current) => [
-        {
-          ...data,
-          id: id(),
-        },
-        ...current,
-      ]
+  data: Omit<Visit, 'id'>
+) => {
+  const matchingTask = tasks.find(
+    (task) =>
+      task.schoolId === data.schoolId &&
+      task.date === data.date
+  );
+
+  const newVisit: Visit = {
+    ...data,
+    id: id(),
+    planTaskId: matchingTask?.id,
+  };
+
+  setVisits(
+    (current) => [
+      newVisit,
+      ...current,
+    ]
+  );
+
+  if (
+    data.status === 'completed' &&
+    matchingTask
+  ) {
+    setTasks(
+      (current) =>
+        current.map(
+          (task) =>
+            task.id === matchingTask.id
+              ? {
+                  ...task,
+                  done: true,
+                  planStatus: 'completed',
+                }
+              : task
+        )
     );
+  }
+};
 
   const updateVisit = (
     visitId: string,
