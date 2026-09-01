@@ -342,11 +342,13 @@ export default function MonthlyPlanScreen() {
         done: !!task.done,
       }));
 
+    const apiBaseUrl = (
+      process.env.EXPO_PUBLIC_API_URL ||
+      'https://edu-supervision-ai-worker.alshamiasc3.workers.dev'
+    ).replace(/\/$/, '');
+
     const response = await fetch(
-      `${(
-        process.env.EXPO_PUBLIC_API_URL ||
-        'http://localhost:3000'
-      ).replace(/\/$/, '')}/api/ai/monthly-plan`,
+      `${apiBaseUrl}/api/ai/monthly-plan`,
       {
         method: 'POST',
         headers: {
