@@ -170,8 +170,21 @@ export default function VisitAI() {
          schoolName = اسم المدرسة
       =================================================== */
 
+      /*
+       * عنوان خدمة الذكاء الاصطناعي:
+       * - في نسخة APK نستخدم Worker المنشور.
+       * - EXPO_PUBLIC_API_URL له الأولوية إذا تم تعريفه.
+       *
+       * لا نستخدم localhost كقيمة احتياطية في الهاتف،
+       * لأن localhost على الهاتف يشير إلى الهاتف نفسه.
+       */
+      const apiBaseUrl = (
+        process.env.EXPO_PUBLIC_API_URL ||
+        'https://edu-supervision-ai-worker.alshamiasc3.workers.dev'
+      ).replace(/\/$/, '');
+
       const response = await fetch(
-        `${(process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '')}/api/ai/visit-draft`,
+        `${apiBaseUrl}/api/ai/visit-draft`,
         {
           method: 'POST',
 
