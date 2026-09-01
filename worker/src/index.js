@@ -5,8 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Max-Age': '86400',
 };
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -16,133 +16,9 @@ function json(data, status = 200) {
     },
   });
 }
+
 function clean(value) {
-  return value == null ? '' : String(value).trim();
-}
-function buildPrompt({ procedure, visitType, schoolName }) {
-  return `
-أنت مساعد ذكي متخصص في الإشراف التربوي في المدارس العراقية.
-
-مهمتك مساعدة المشرف التربوي في إعداد مسودة مهنية لسجل الزيارة المدرسية.
-المشرف هو صاحب القرار النهائي، وهذه المخرجات مسودة مقترحة يراجعها ويعدلها قبل نقلها إلى سجل الزيارة.
-
-المطلوب منك ليس نسخ كلام المشرف، بل تحويل معطياته إلى صياغة تربوية رسمية واضحة ومترابطة وغنية بالمعنى.
-
-القواعد العامة:
-
-1. اعتمد أساسًا على المعلومات التي أدخلها المشرف.
-2. لا تخترع أسماء أو أرقامًا أو تواريخ أو نسبًا أو نتائج محددة أو أحداثًا لم يذكرها المشرف.
-3. يمكنك إضافة عبارات مهنية إيجابية عامة تساعد على تشجيع الكادر، مثل:
-   - الاهتمام بالعمل.
-   - الحرص على المتابعة.
-   - التعاون.
-   - الالتزام.
-   - تنظيم العمل.
-   - تعزيز الجوانب الإيجابية.
-   - الاستمرار في المتابعة.
-   بشرط أن تكون العبارة مناسبة لسياق المدخلات وألا تتحول إلى ادعاء واقعة محددة.
-4. لا تدّعِ أن المشرف شاهد نتيجة معينة أو تحقق من إنجاز معين إذا لم يذكر ذلك.
-5. لا تخترع مشكلات أو تقصيرًا أو نجاحًا محددًا.
-6. لا تضف أرقامًا أو نسب إنجاز أو تواريخ أو أسماء مسؤولين أو مواعيد متابعة من عندك.
-7. نوع الزيارة هو النوع الذي اختاره المشرف، ويجب الحفاظ على معناه وعدم تغييره.
-8. لا تكرر نوع الزيارة داخل النص إلا عندما يكون ذلك ضروريًا.
-9. استخدم لغة عربية مهنية رسمية مناسبة لسجل زيارة إشراف تربوي في المدارس العراقية.
-10. اجعل الصياغة طبيعية ومترابطة وليست مجرد استبدال كلمات.
-11. إذا احتوت المدخلات على عدة إجراءات أو موضوعات، اربط بينها في صياغة واحدة متماسكة.
-12. لا تكرر الجملة نفسها في الملاحظات والتوصيات وخطة المتابعة.
-13. لا تستخدم عبارات إنشائية فارغة لا ترتبط بموضوع الزيارة.
-14. لا تذكر أنك نموذج ذكاء اصطناعي.
-15. تذكر دائمًا أن الناتج «مسودة مقترحة» للمشرف وليست سجلًا نهائيًا.
-
-طريقة إعداد المخرجات:
-
-أولًا: الملاحظات
-
-اكتب فقرة مهنية تصف موضوعات الزيارة وما تم تناوله استنادًا إلى المعلومات التي أدخلها المشرف.
-
-يمكنك استخدام عبارات إيجابية مهنية عامة عند ملاءمتها، مثل الاهتمام والمتابعة والحرص والتنظيم والتعاون، ولكن لا تحولها إلى نتائج محددة غير مذكورة.
-
-لا تكتب الملاحظة على شكل نسخ مباشر للإجراء.
-
-مثال:
-
-إذا كان المدخل:
-«الاطلاع على السجلات والأوامر المدرسية ومتابعة أداء الكادر وملاحظة سجلات غيابات الطلبة»
-
-فصياغة مناسبة يمكن أن تكون:
-«تناولت الزيارة متابعة السجلات والأوامر المدرسية والاطلاع على سجلات غيابات الطلبة، مع متابعة أداء الكادر في الجوانب المرتبطة بالعمل المدرسي، والتأكيد على أهمية تنظيم العمل والاستمرار في المتابعة.»
-
-ثانيًا: التوصيات والإجراءات
-
-حوّل إجراءات المشرف إلى توصيات وإجراءات تربوية واضحة ومهنية.
-
-لا تكتفِ بتكرار النص المدخل.
-
-يمكنك توضيح المقصود وتحسين الأسلوب وربط الإجراءات ببعضها، مع عدم إضافة مهمة جوهرية جديدة.
-
-مثال:
-
-المدخل:
-«الاطلاع على السجلات والأوامر المدرسية»
-
-الصياغة:
-«التأكيد على تنظيم السجلات المدرسية ومتابعة الأوامر والتعليمات الواردة والاطلاع عليها والعمل بموجبها وفق السياقات المعتمدة.»
-
-ثالثًا: خطة المتابعة
-
-اكتب خطة متابعة عملية ومختصرة مرتبطة مباشرة بما ورد في الإجراءات.
-
-يمكن استخدام عبارات مثل:
-«متابعة استمرار...»
-«الاستمرار في متابعة...»
-«تعزيز متابعة...»
-«التأكد من استمرار...»
-
-لكن لا تضف موعدًا أو تاريخًا أو نسبة أو مسؤولًا محددًا لم يذكره المشرف.
-
-مثال:
-
-المدخل:
-«الاطلاع على السجلات والأوامر المدرسية ومتابعة سجلات غيابات الطلبة»
-
-خطة المتابعة:
-«متابعة انتظام السجلات المدرسية وسجلات غيابات الطلبة والاستمرار في متابعة الأوامر والتعليمات ذات الصلة.»
-
-بيانات الزيارة:
-
-اسم المدرسة:
-${schoolName || 'غير محدد'}
-
-نوع الزيارة:
-${visitType || 'غير محدد'}
-
-الإجراءات أو التوصيات التي أدخلها المشرف:
-${procedure || 'لم يتم إدخال إجراءات محددة.'}
-
-المطلوب:
-
-أعد النتيجة في ثلاثة حقول فقط:
-
-notes:
-الملاحظات المقترحة.
-
-recommendations:
-التوصيات والإجراءات المقترحة.
-
-followUp:
-خطة المتابعة المقترحة.
-
-تعليمات مهمة جدًا:
-
-- لا تضع عناوين داخل قيم الحقول.
-- لا تضع شرحًا خارج الحقول الثلاثة.
-- لا تكرر النص المدخل حرفيًا.
-- اجعل كل حقل مختلفًا في وظيفته عن الحقلين الآخرين.
-- اجعل الصياغة مناسبة لأن يراجعها المشرف ثم ينقلها إلى سجل الزيارة.
-- إذا كانت المعلومات قليلة، لا تجعل النص طويلًا بلا داعٍ.
-- إذا كانت المعلومات متعددة، اربطها في صياغة مهنية متماسكة.
-- أعد النتيجة باللغة العربية فقط.
-`;
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 async function handleVisitDraft(request, env) {
@@ -157,13 +33,32 @@ async function handleVisitDraft(request, env) {
     return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400);
   }
 
-  const procedure = clean(body?.procedure);
-  const visitType = clean(body?.visitType);
+  const visitType = clean(body?.visitType) || 'زيارة';
   const schoolName = clean(body?.schoolName);
+  const notes = clean(body?.notes);
+  const findings = clean(body?.findings);
+  const recommendations = clean(body?.recommendations);
 
-  if (!procedure) {
-    return json({ ok: false, error: 'يرجى إدخال الإجراءات أو التوصيات أولًا.' }, 400);
-  }
+  const prompt = `
+أنت مساعد ذكي متخصص في الإشراف التربوي المدرسي في العراق.
+
+اكتب مسودة مهنية باللغة العربية لبيانات الزيارة التربوية اعتمادًا فقط على المعطيات المرسلة.
+لا تخترع وقائع أو أرقامًا أو نتائج غير موجودة.
+المشرف هو صاحب القرار النهائي، والنتيجة مسودة قابلة للتعديل.
+
+نوع الزيارة: ${visitType}
+المدرسة: ${schoolName}
+الملاحظات: ${notes}
+النتائج: ${findings}
+التوصيات: ${recommendations}
+
+أعد JSON فقط بالشكل:
+{
+  "notes": "صياغة مهنية مختصرة للملاحظات",
+  "recommendations": "توصيات عملية مختصرة",
+  "followUp": "إجراءات المتابعة إن وجدت"
+}
+`;
 
   const geminiResponse = await fetch(GEMINI_URL, {
     method: 'POST',
@@ -172,11 +67,7 @@ async function handleVisitDraft(request, env) {
       'x-goog-api-key': env.GEMINI_API_KEY,
     },
     body: JSON.stringify({
-      contents: [
-        {
-          parts: [{ text: buildPrompt({ procedure, visitType, schoolName }) }],
-        },
-      ],
+      contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         response_mime_type: 'application/json',
         response_schema: {
@@ -188,7 +79,7 @@ async function handleVisitDraft(request, env) {
           },
           required: ['notes', 'recommendations', 'followUp'],
         },
-        temperature: 0.55,
+        temperature: 0.4,
         max_output_tokens: 1200,
       },
     }),
@@ -197,15 +88,12 @@ async function handleVisitDraft(request, env) {
   const data = await geminiResponse.json();
 
   if (!geminiResponse.ok) {
-    console.error('Gemini request failed:', geminiResponse.status, data?.error?.message);
-    return json({
-      ok: false,
-      error: 'تعذر إنشاء الصياغة الذكية من خدمة Gemini.',
-    }, 502);
+    console.error('Gemini visit draft request failed:', geminiResponse.status, data?.error?.message);
+    return json({ ok: false, error: 'تعذر إنشاء مسودة الزيارة.' }, 502);
   }
 
   const outputText = (data?.candidates?.[0]?.content?.parts || [])
-    .map((part) => typeof part?.text === 'string' ? part.text : '')
+    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
     .join('')
     .trim();
 
@@ -233,6 +121,7 @@ async function handleVisitDraft(request, env) {
   });
 }
 
+<<<<<<< HEAD
 function normalizePlanText(value) {
   return clean(value)
     .toLowerCase()
@@ -299,10 +188,23 @@ async function handleMonthlyPlanSuggestion(request, env) {
       },
       400
     );
+=======
+async function handleMonthlyPlanSuggestion(request, env) {
+  if (!env.GEMINI_API_KEY) {
+    return json({ ok: false, error: 'خدمة الذكاء الاصطناعي غير مهيأة على الخادم.' }, 500);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400);
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
   }
 
   const month = clean(body?.month);
   const year = clean(body?.year);
+<<<<<<< HEAD
   const schools = Array.isArray(body?.schools)
     ? body.schools
     : [];
@@ -331,6 +233,21 @@ async function handleMonthlyPlanSuggestion(request, env) {
 المشرف هو صاحب القرار النهائي.
 لا تقم بإضافة أي مهمة إلى النظام.
 أنت تقدم اقتراحات فقط ليقوم المشرف بمراجعتها واعتمادها أو تعديلها أو رفضها.
+=======
+  const schools = Array.isArray(body?.schools) ? body.schools : [];
+  const visits = Array.isArray(body?.visits) ? body.visits : [];
+  const previousTasks = Array.isArray(body?.previousTasks) ? body.previousTasks : [];
+
+  if (!month || !year) {
+    return json({ ok: false, error: 'يجب تحديد الشهر والسنة.' }, 400);
+  }
+
+  const prompt = `
+أنت مساعد ذكي متخصص في الإشراف التربوي المدرسي في العراق.
+
+مهمتك إعداد مقترحات مسودة لخطة العمل الشهرية للمشرف التربوي، اعتمادًا فقط على البيانات المرسلة إليك.
+المشرف هو صاحب القرار النهائي. أنت تقترح فقط، ولا تضف أي مهمة تلقائيًا إلى النظام.
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
 
 الشهر المطلوب:
 ${month}
@@ -338,15 +255,27 @@ ${month}
 السنة:
 ${year}
 
+<<<<<<< HEAD
 المدارس المتوفرة في النظام:
 ${JSON.stringify(schools, null, 2)}
 
 المهام الموجودة حاليًا في الخطة للشهر المطلوب:
 ${JSON.stringify(currentTasks, null, 2)}
+=======
+المدارس:
+${JSON.stringify(schools, null, 2)}
+
+سجل الزيارات السابقة:
+${JSON.stringify(visits, null, 2)}
+
+مهام الشهر المطلوب حاليًا:
+${JSON.stringify(body?.currentTasks || [], null, 2)}
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
 
 المهام السابقة:
 ${JSON.stringify(previousTasks, null, 2)}
 
+<<<<<<< HEAD
 القواعد:
 
 1. اعتمد فقط على البيانات المرسلة إليك.
@@ -374,11 +303,39 @@ ${JSON.stringify(previousTasks, null, 2)}
       "title": "عنوان المهمة المقترحة",
       "notes": "وصف مختصر للمهمة",
       "reason": "سبب اقتراح المهمة"
+=======
+قواعد الاقتراح:
+1. الزيارات المدرسية الدورية مهمة أساسية في عمل المشرف؛ لذلك يجوز اقتراح زيارة دورية للمدارس.
+2. رتّب أولوية الزيارات حسب أقدم تاريخ لآخر زيارة معروف لكل مدرسة: المدرسة التي مضى على آخر زيارة لها أطول وقت تكون أولى بالاقتراح، ثم الأحدث.
+3. إذا لم توجد زيارة سابقة معروفة لمدرسة، اعتبرها من المدارس ذات الأولوية، ولا تخترع لها تاريخًا.
+4. لا تقترح نفس المدرسة + نفس عنوان المهمة إذا كانت هذه المهمة موجودة بالفعل في مهام الشهر المطلوب، سواء كانت مخططة أو قيد التنفيذ أو مكتملة.
+5. وجود مهمة مشابهة في شهر سابق لا يمنع اقتراح عمل جديد في الشهر المطلوب؛ استخدم المهام السابقة لفهم الاستمرارية والمتابعة.
+6. أعط الأولوية للأعمال السابقة غير المكتملة أو التي تحتاج متابعة واضحة.
+7. لا تقترح "تحقيق" أو "تحقق" من نفسك. هذه الأعمال لا تُقترح إلا إذا كانت موجودة أصلًا ضمن المهام المخططة السابقة أو الحالية وتوجد قرينة واضحة على الحاجة إلى متابعتها.
+8. لا تخترع مشكلة في مدرسة، ولا تخترع نتائج أو أرقامًا أو تواريخ أو معلومات غير موجودة في البيانات.
+9. لا تضع تاريخًا محددًا للمهمة المقترحة؛ تاريخ التنفيذ يحدده المشرف عند اعتمادها.
+10. اجعل كل اقتراح عمليًا ومختصرًا ومناسبًا لعمل المشرف التربوي.
+11. عند اقتراح زيارة دورية، استخدم المدرسة ذات الأولوية الأعلى بناءً على أقدمية آخر زيارة، ولا تكرر مدرسة موجودة أصلًا بنفس عنوان المهمة في الشهر المطلوب.
+12. إذا كانت البيانات غير كافية لاقتراح مهمة مفيدة، أعد قائمة فارغة بدل اختراع معلومات.
+13. أعد النتيجة باللغة العربية فقط.
+14. أعد JSON فقط بالشكل التالي:
+{
+  "suggestions": [
+    {
+      "schoolId": "معرف المدرسة",
+      "title": "عنوان المهمة",
+      "notes": "وصف مختصر للمهمة",
+      "reason": "سبب الاقتراح"
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
     }
   ]
 }
 
+<<<<<<< HEAD
 إذا لم توجد بيانات كافية لاقتراح مهمة مناسبة، أعد:
+=======
+إذا لم توجد اقتراحات مناسبة:
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
 {
   "suggestions": []
 }
@@ -391,11 +348,15 @@ ${JSON.stringify(previousTasks, null, 2)}
       'x-goog-api-key': env.GEMINI_API_KEY,
     },
     body: JSON.stringify({
+<<<<<<< HEAD
       contents: [
         {
           parts: [{ text: prompt }],
         },
       ],
+=======
+      contents: [{ parts: [{ text: prompt }] }],
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
       generationConfig: {
         response_mime_type: 'application/json',
         response_schema: {
@@ -411,12 +372,16 @@ ${JSON.stringify(previousTasks, null, 2)}
                   notes: { type: 'string' },
                   reason: { type: 'string' },
                 },
+<<<<<<< HEAD
                 required: [
                   'schoolId',
                   'title',
                   'notes',
                   'reason',
                 ],
+=======
+                required: ['schoolId', 'title', 'notes', 'reason'],
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
               },
             },
           },
@@ -431,6 +396,7 @@ ${JSON.stringify(previousTasks, null, 2)}
   const data = await geminiResponse.json();
 
   if (!geminiResponse.ok) {
+<<<<<<< HEAD
     console.error(
       'Gemini monthly plan request failed:',
       geminiResponse.status,
@@ -454,10 +420,19 @@ ${JSON.stringify(previousTasks, null, 2)}
         ? part.text
         : ''
     )
+=======
+    console.error('Gemini monthly plan request failed:', geminiResponse.status, data?.error?.message);
+    return json({ ok: false, error: 'تعذر إنشاء اقتراح الخطة الشهرية.' }, 502);
+  }
+
+  const outputText = (data?.candidates?.[0]?.content?.parts || [])
+    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
     .join('')
     .trim();
 
   if (!outputText) {
+<<<<<<< HEAD
     return json(
       {
         ok: false,
@@ -521,6 +496,23 @@ ${JSON.stringify(previousTasks, null, 2)}
     ok: true,
     result: {
       suggestions: filteredSuggestions,
+=======
+    return json({ ok: false, error: 'عادت استجابة فارغة من خدمة الذكاء الاصطناعي.' }, 502);
+  }
+
+  let result;
+  try {
+    result = JSON.parse(outputText);
+  } catch (error) {
+    console.error('Invalid monthly plan Gemini JSON:', error, outputText);
+    return json({ ok: false, error: 'تعذر قراءة اقتراح الخطة الشهرية.' }, 502);
+  }
+
+  return json({
+    ok: true,
+    result: {
+      suggestions: Array.isArray(result?.suggestions) ? result.suggestions : [],
+>>>>>>> 4129586 (Improve AI monthly plan suggestions)
       month,
       year,
       model: GEMINI_MODEL,
@@ -567,12 +559,11 @@ export default {
     }
 
     if (request.method === 'POST' && url.pathname === '/api/ai/visit-draft') {
-      try {
-        return await handleVisitDraft(request, env);
-      } catch (error) {
-        console.error('Worker error:', error);
-        return json({ ok: false, error: 'حدث خطأ غير متوقع في خدمة الذكاء الاصطناعي.' }, 500);
-      }
+      return handleVisitDraft(request, env);
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/ai/monthly-plan') {
+      return handleMonthlyPlanSuggestion(request, env);
     }
 
     return json({ ok: false, error: 'المسار غير موجود.' }, 404);
