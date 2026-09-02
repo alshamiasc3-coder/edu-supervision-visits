@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 export type School = { id: string; name: string; director: string; adminDeputy: string; technicalDeputy: string; studentsDeputy: string; sections: string[]; address: string; lastVisit?: string };
-export type Visit = { id: string; schoolId: string; date: string; type: string; reason: string; actions: string; status: 'planned' | 'completed' | 'postponed'; photoUri?: string };
+export type Visit = { id: string; schoolId: string; date: string; type: string; actions: string; status: 'planned' | 'completed' | 'postponed'; photoUri?: string };
 export type Task = { id: string; title: string; schoolId?: string; time: string; priority: 'high' | 'medium' | 'low'; notes: string; done: boolean; date: string };
 
 const id = () => Date.now().toString() + Math.random().toString(36).slice(2, 8);
@@ -12,9 +12,9 @@ const seedSchools: School[] = [
  { id: 's3', name: 'مدرسة النور المهنية', director: 'حسن علي', adminDeputy: 'مريم سعد', technicalDeputy: 'قاسم عادل', studentsDeputy: 'رائد مهدي', sections: ['محاسبة', 'ميكانيك'], address: 'الشعلة - بغداد', lastVisit: '2026-07-24' },
 ];
 const seedVisits: Visit[] = [
- { id: 'v1', schoolId: 's1', date: '2026-08-24', type: 'زيارة اختصاص', reason: 'متابعة سير الدروس العملية', actions: 'تدقيق السجلات ومتابعة خطة القسم', status: 'planned' },
- { id: 'v2', schoolId: 's2', date: '2026-08-18', type: 'زيارة تقويمية', reason: 'تقويم الأداء المدرسي', actions: 'إكمال خطة التحسين', status: 'completed' },
- { id: 'v3', schoolId: 's3', date: '2026-08-15', type: 'زيارة تحقق', reason: 'التحقق من تنفيذ التوصيات', actions: 'إعادة الزيارة بعد أسبوع', status: 'postponed' },
+ { id: 'v1', schoolId: 's1', date: '2026-08-24', type: 'زيارة اختصاص', actions: 'تدقيق السجلات ومتابعة خطة القسم', status: 'planned' },
+ { id: 'v2', schoolId: 's2', date: '2026-08-18', type: 'زيارة تقويمية', actions: 'إكمال خطة التحسين', status: 'completed' },
+ { id: 'v3', schoolId: 's3', date: '2026-08-15', type: 'زيارة تحقق', actions: 'إعادة الزيارة بعد أسبوع', status: 'postponed' },
 ];
 const seedTasks: Task[] = [
  { id: 't1', title: 'تدقيق سجل الزيارات', schoolId: 's1', time: '09:00', priority: 'high', notes: 'التأكد من توقيع الإدارة', done: false, date: '2026-08-20' },
