@@ -10,10 +10,7 @@ const corsHeaders = {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json; charset=utf-8',
-    },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
   });
 }
 
@@ -22,50 +19,68 @@ function clean(value) {
 }
 
 async function handleVisitDraft(request, env) {
-  if (!env.GEMINI_API_KEY) {
-    return json({ ok: false, error: 'خدمة الذكاء الاصطناعي غير مهيأة على الخادم.' }, 500);
-  }
+  if (!env.GEMINI_API_KEY) return json({ ok: false, error: 'خدمة الذكاء الاصطناعي غير مهيأة على الخادم.' }, 500);
 
   let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400);
-  }
+  try { body = await request.json(); } catch { return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400); }
 
   const visitType = clean(body?.visitType) || 'زيارة';
   const schoolName = clean(body?.schoolName);
-  const notes = clean(body?.notes);
-  const findings = clean(body?.findings);
-  const recommendations = clean(body?.recommendations);
+  const visitDate = clean(body?.visitDate);
+  const observations = clean(body?.observations);
+  const actions = clean(body?.actions);
+  const proposals = clean(body?.proposals);
+  const followUp = clean(body?.followUp);
+  const history = clean(body?.history);
+  const legalReferences = clean(body?.legalReferences);
 
   const prompt = `
-أنت مساعد ذكي متخصص في الإشراف التربوي المدرسي في العراق.
+أنت مساعد مهني متخصص في الإشراف التربوي المدرسي في العراق.
 
-اكتب مسودة مهنية باللغة العربية لبيانات الزيارة التربوية اعتمادًا فقط على المعطيات المرسلة.
-لا تخترع وقائع أو أرقامًا أو نتائج غير موجودة.
-المشرف هو صاحب القرار النهائي، والنتيجة مسودة قابلة للتعديل.
+مهمتك إعداد مسودة قابلة للمراجعة لزيارة إشرافية اعتمادًا فقط على المعطيات المرسلة.
+المشرف التربوي هو صاحب القرار النهائي. لا تحفظ شيئًا ولا تعتمد توصية تلقائيًا.
+لا تخترع وقائع أو أرقامًا أو نتائج أو إجراءات أو تواريخ غير موجودة.
+لا تستنتج شخصية المشرف أو حالته النفسية أو نواياه. استخدم السجل السابق لفهم الاستمرارية المهنية فقط.
 
-نوع الزيارة: ${visitType}
+افصل بدقة بين:
+- الملاحظات والمشاهدات: ما يمكن صياغته مما شاهده أو سجله المشرف.
+- الإجراءات المتخذة فعليًا: ما تم تنفيذه أثناء الزيارة فقط. لا تضع هنا أي إجراء مقترح.
+- المقترحات والتوصيات: ما يُقترح تنفيذه لاحقًا، ولا تقدمه على أنه منفذ.
+- المتابعة المقترحة: ما ينبغي مراجعته لاحقًا.
+
+إذا كانت خانة من الخانات الحالية تحتوي على معلومات كافية، حسّن صياغتها دون تغيير معناها.
+إذا كانت الخانة فارغة، لا تخترع واقعة؛ يمكن تقديم صياغة مقترحة عامة فقط عندما تكون مبنية بوضوح على نوع الزيارة والمعطيات المتاحة، وإلا أعدها فارغة.
+إذا ظهر في السجل السابق ارتباط بتوصية أو إجراء سابق، صِغ الاستمرارية بحذر ولا تدّعِ التنفيذ إلا إذا كان السجل يثبته.
+
+بيانات الزيارة الحالية:
 المدرسة: ${schoolName}
-الملاحظات: ${notes}
-النتائج: ${findings}
-التوصيات: ${recommendations}
+التاريخ: ${visitDate}
+نوع الزيارة: ${visitType}
+الملاحظات والمشاهدات الحالية: ${observations}
+الإجراءات المتخذة فعليًا الحالية: ${actions}
+المقترحات والتوصيات الحالية: ${proposals}
+المتابعة المقترحة الحالية: ${followUp}
 
-أعد JSON فقط بالشكل:
+السجل المهني السابق:
+${history || 'لا توجد زيارات سابقة مسجلة.'}
+
+المراجع التشريعية الموثقة المرشحة:
+${legalReferences || 'لا يوجد سند تشريعي موثق مرتبط بالمعطيات الحالية.'}
+
+بالنسبة للمرجع التشريعي: استخدمه كقرينة موثقة فقط. لا تخترع رقم مادة أو فقرة أو حكمًا. إذا لم يتوفر نص المادة، لا تدّعِ مضمونًا قانونيًا تفصيليًا.
+
+أعد JSON فقط بالشكل التالي:
 {
-  "notes": "صياغة مهنية مختصرة للملاحظات",
-  "recommendations": "توصيات عملية مختصرة",
-  "followUp": "إجراءات المتابعة إن وجدت"
+  "observations": "صياغة الملاحظات والمشاهدات",
+  "actions": "صياغة الإجراءات المتخذة فعليًا",
+  "proposals": "صياغة المقترحات والتوصيات",
+  "followUp": "صياغة المتابعة المقترحة"
 }
 `;
 
   const geminiResponse = await fetch(GEMINI_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': env.GEMINI_API_KEY,
-    },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
@@ -73,38 +88,30 @@ async function handleVisitDraft(request, env) {
         response_schema: {
           type: 'object',
           properties: {
-            notes: { type: 'string' },
-            recommendations: { type: 'string' },
+            observations: { type: 'string' },
+            actions: { type: 'string' },
+            proposals: { type: 'string' },
             followUp: { type: 'string' },
           },
-          required: ['notes', 'recommendations', 'followUp'],
+          required: ['observations', 'actions', 'proposals', 'followUp'],
         },
         temperature: 0.4,
-        max_output_tokens: 1200,
+        max_output_tokens: 1400,
       },
     }),
   });
 
   const data = await geminiResponse.json();
-
   if (!geminiResponse.ok) {
     console.error('Gemini visit draft request failed:', geminiResponse.status, data?.error?.message);
     return json({ ok: false, error: 'تعذر إنشاء مسودة الزيارة.' }, 502);
   }
 
-  const outputText = (data?.candidates?.[0]?.content?.parts || [])
-    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
-    .join('')
-    .trim();
-
-  if (!outputText) {
-    return json({ ok: false, error: 'عادت استجابة فارغة من خدمة الذكاء الاصطناعي.' }, 502);
-  }
+  const outputText = (data?.candidates?.[0]?.content?.parts || []).map((part) => typeof part?.text === 'string' ? part.text : '').join('').trim();
+  if (!outputText) return json({ ok: false, error: 'عادت استجابة فارغة من خدمة الذكاء الاصطناعي.' }, 502);
 
   let result;
-  try {
-    result = JSON.parse(outputText);
-  } catch (error) {
+  try { result = JSON.parse(outputText); } catch (error) {
     console.error('Invalid Gemini JSON:', error, outputText);
     return json({ ok: false, error: 'تعذر قراءة نتيجة الذكاء الاصطناعي.' }, 502);
   }
@@ -112,26 +119,21 @@ async function handleVisitDraft(request, env) {
   return json({
     ok: true,
     result: {
-      notes: clean(result?.notes),
-      recommendations: clean(result?.recommendations),
+      observations: clean(result?.observations),
+      actions: clean(result?.actions),
+      proposals: clean(result?.proposals),
       followUp: clean(result?.followUp),
       visitType,
+      visitDate,
       model: GEMINI_MODEL,
     },
   });
 }
 
 async function handleMonthlyPlanSuggestion(request, env) {
-  if (!env.GEMINI_API_KEY) {
-    return json({ ok: false, error: 'خدمة الذكاء الاصطناعي غير مهيأة على الخادم.' }, 500);
-  }
-
+  if (!env.GEMINI_API_KEY) return json({ ok: false, error: 'خدمة الذكاء الاصطناعي غير مهيأة على الخادم.' }, 500);
   let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400);
-  }
+  try { body = await request.json(); } catch { return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400); }
 
   const month = clean(body?.month);
   const year = clean(body?.year);
@@ -139,10 +141,7 @@ async function handleMonthlyPlanSuggestion(request, env) {
   const visits = Array.isArray(body?.visits) ? body.visits : [];
   const previousTasks = Array.isArray(body?.previousTasks) ? body.previousTasks : [];
   const currentTasks = Array.isArray(body?.currentTasks) ? body.currentTasks : [];
-
-  if (!month || !year) {
-    return json({ ok: false, error: 'يجب تحديد الشهر والسنة.' }, 400);
-  }
+  if (!month || !year) return json({ ok: false, error: 'يجب تحديد الشهر والسنة.' }, 400);
 
   const prompt = `
 أنت مساعد ذكي متخصص في الإشراف التربوي المدرسي في العراق.
@@ -210,10 +209,7 @@ ${JSON.stringify(previousTasks, null, 2)}
 
   const geminiResponse = await fetch(GEMINI_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': env.GEMINI_API_KEY,
-    },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
@@ -223,16 +219,9 @@ ${JSON.stringify(previousTasks, null, 2)}
           properties: {
             suggestions: {
               type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  schoolId: { type: 'string' },
-                  title: { type: 'string' },
-                  notes: { type: 'string' },
-                  reason: { type: 'string' },
-                },
-                required: ['schoolId', 'title', 'notes', 'reason'],
-              },
+              items: { type: 'object', properties: {
+                schoolId: { type: 'string' }, title: { type: 'string' }, notes: { type: 'string' }, reason: { type: 'string' },
+              }, required: ['schoolId', 'title', 'notes', 'reason'] },
             },
           },
           required: ['suggestions'],
@@ -244,60 +233,28 @@ ${JSON.stringify(previousTasks, null, 2)}
   });
 
   const data = await geminiResponse.json();
-
   if (!geminiResponse.ok) {
     console.error('Gemini monthly plan request failed:', geminiResponse.status, data?.error?.message);
     return json({ ok: false, error: 'تعذر إنشاء اقتراح الخطة الشهرية.' }, 502);
   }
-
-  const outputText = (data?.candidates?.[0]?.content?.parts || [])
-    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
-    .join('')
-    .trim();
-
-  if (!outputText) {
-    return json({ ok: false, error: 'عادت استجابة فارغة من خدمة الذكاء الاصطناعي.' }, 502);
-  }
+  const outputText = (data?.candidates?.[0]?.content?.parts || []).map((part) => typeof part?.text === 'string' ? part.text : '').join('').trim();
+  if (!outputText) return json({ ok: false, error: 'عادت استجابة فارغة من خدمة الذكاء الاصطناعي.' }, 502);
 
   let result;
-  try {
-    result = JSON.parse(outputText);
-  } catch (error) {
+  try { result = JSON.parse(outputText); } catch (error) {
     console.error('Invalid monthly plan Gemini JSON:', error, outputText);
     return json({ ok: false, error: 'تعذر قراءة اقتراح الخطة الشهرية.' }, 502);
   }
-
-  return json({
-    ok: true,
-    result: {
-      suggestions: Array.isArray(result?.suggestions) ? result.suggestions : [],
-      month,
-      year,
-      model: GEMINI_MODEL,
-    },
-  });
+  return json({ ok: true, result: { suggestions: Array.isArray(result?.suggestions) ? result.suggestions : [], month, year, model: GEMINI_MODEL } });
 }
 
 export default {
   async fetch(request, env) {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders });
-    }
-
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     const url = new URL(request.url);
-
-    if (request.method === 'GET' && url.pathname === '/api/health') {
-      return json({ ok: true, service: 'edu-supervision-ai' });
-    }
-
-    if (request.method === 'POST' && url.pathname === '/api/ai/visit-draft') {
-      return handleVisitDraft(request, env);
-    }
-
-    if (request.method === 'POST' && url.pathname === '/api/ai/monthly-plan') {
-      return handleMonthlyPlanSuggestion(request, env);
-    }
-
+    if (request.method === 'GET' && url.pathname === '/api/health') return json({ ok: true, service: 'edu-supervision-ai' });
+    if (request.method === 'POST' && url.pathname === '/api/ai/visit-draft') return handleVisitDraft(request, env);
+    if (request.method === 'POST' && url.pathname === '/api/ai/monthly-plan') return handleMonthlyPlanSuggestion(request, env);
     return json({ ok: false, error: 'المسار غير موجود.' }, 404);
   },
 };
