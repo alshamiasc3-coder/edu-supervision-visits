@@ -1,641 +1,130 @@
-import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { useStore, visitTypes } from '@/context/AppContext';
+import { buildVisitAiContext } from '@/utils/visitAiContext';
+import { buildLegalAiContext } from '@/utils/legalAiContext';
 
 export default function VisitAIScreen() {
   const router = useRouter();
-
+  const { visits, schools } = useStore();
   const [schoolName, setSchoolName] = useState('');
-  const [visitDate, setVisitDate] = useState('');
-  const [visitType, setVisitType] = useState('زيارة إشرافية');
+  const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10));
+  const [visitType, setVisitType] = useState(visitTypes[0]);
   const [observations, setObservations] = useState('');
-  const [strengths, setStrengths] = useState('');
-  const [needs, setNeeds] = useState('');
-  const [recommendations, setRecommendations] = useState('');
+  const [actions, setActions] = useState('');
+  const [proposals, setProposals] = useState('');
+  const [followUp, setFollowUp] = useState('');
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const context = useMemo(() => buildVisitAiContext({ schoolName, visitDate, visitType, observations, actions, proposals, followUp }, visits), [schoolName, visitDate, visitType, observations, actions, proposals, followUp, visits]);
+  const legal = useMemo(() => buildLegalAiContext({ visitType, observations, actions, proposals }), [visitType, observations, actions, proposals]);
 
   const generateSuggestion = () => {
     setLoading(true);
     setResult('');
-
     setTimeout(() => {
       const school = schoolName.trim() || 'المدرسة';
-      const date = visitDate.trim() || 'التاريخ المحدد للزيارة';
-
-      const observationText =
-        observations.trim() ||
-        'تمت متابعة سير العملية التعليمية والاطلاع على مستوى تنفيذ الأعمال والمهام الموكلة للمدرسة.';
-
-      const strengthsText =
-        strengths.trim() ||
-        'وجود تعاون جيد من إدارة المدرسة والهيئة التعليمية، مع اهتمام بمتابعة سير العمل التربوي.';
-
-      const needsText =
-        needs.trim() ||
-        'الحاجة إلى الاستمرار في متابعة الجوانب التي تحتاج إلى تطوير ومعالجة الملاحظات وفق الأولويات.';
-
-      const recommendationsText =
-        recommendations.trim() ||
-        'متابعة تنفيذ التوصيات بصورة دورية وتوثيق الإجراءات المتخذة ورفع مستوى المتابعة خلال الزيارات القادمة.';
-
-      const generated = `
-تقرير زيارة إشرافية
-
-المدرسة: ${school}
-تاريخ الزيارة: ${date}
-نوع الزيارة: ${visitType}
-
-أولاً: مجريات الزيارة والملاحظات
-${observationText}
-
-ثانياً: جوانب القوة
-${strengthsText}
-
-ثالثاً: الجوانب التي تحتاج إلى متابعة
-${needsText}
-
-رابعاً: التوصيات والإجراءات المقترحة
-${recommendationsText}
-
-خامساً: خطة المتابعة
-يوصى بمتابعة تنفيذ التوصيات الواردة أعلاه خلال الفترة المحددة، والتحقق من مستوى الإنجاز في الزيارة القادمة، مع توثيق الإجراءات المتخذة والنتائج المتحققة.
-
-الصياغة المقترحة:
-تم خلال الزيارة الاطلاع على واقع العمل التربوي والإداري في ${school}، ومتابعة مستوى تنفيذ المهام والخطط المعتمدة. وقد أظهرت الزيارة وجود عدد من الجوانب الإيجابية التي تستحق التعزيز، إلى جانب بعض الجوانب التي تتطلب مزيداً من المتابعة والمعالجة. وعليه تم توجيه إدارة المدرسة إلى متابعة الملاحظات الواردة أعلاه والعمل على تنفيذ التوصيات، على أن تتم متابعة مستوى الإنجاز في الزيارات اللاحقة.
-      `.trim();
-
-      setResult(generated);
+      const obs = observations.trim() || 'تمت متابعة واقع العمل التربوي والاطلاع على مستوى تنفيذ المهام ذات الصلة بالزيارة.';
+      const act = actions.trim() || 'لم تُسجل إجراءات تنفيذية محددة في المعطيات الحالية.';
+      const prop = proposals.trim() || 'يوصى بتحديد إجراءات متابعة واضحة وتوثيق مستوى الإنجاز في الزيارة اللاحقة.';
+      const follow = followUp.trim() || 'تُراجع النتائج في المتابعة القادمة وفق ما يثبته السجل.';
+      const continuity = context.history.recentVisits.length > 0
+        ? 'وبالنظر إلى سجل الزيارات السابقة، يمكن مراعاة استمرارية المتابعة عند وجود ارتباط مثبت بين الملاحظات أو التوصيات الحالية والسابقة.'
+        : 'لا توجد زيارات سابقة كافية لبناء استمرارية مهنية؛ لذلك تعتمد الصياغة على معطيات الزيارة الحالية.';
+      const legalText = legal.candidates.length
+        ? `السند التشريعي المحتمل: ${legal.references}`
+        : 'السند التشريعي: لا يوجد سند موثق مرتبط بشكل كافٍ بالمعطيات الحالية.';
+      setResult([
+        `صياغة زيارة إشرافية مقترحة`,
+        `المدرسة: ${school}`,
+        `التاريخ: ${visitDate || 'غير محدد'}`,
+        `نوع الزيارة: ${visitType}`,
+        '',
+        'الملاحظات والمشاهدات',
+        obs,
+        '',
+        'الإجراءات المتخذة فعليًا',
+        act,
+        '',
+        'المقترحات والتوصيات',
+        prop,
+        '',
+        'المتابعة',
+        follow,
+        '',
+        continuity,
+        '',
+        legalText,
+        '',
+        'تنبيه: هذه صياغة مساعدة للمراجعة وليست اعتمادًا نهائيًا أو رأيًا قانونيًا ملزمًا.',
+      ].join('\n'));
       setLoading(false);
-    }, 700);
+    }, 350);
   };
 
   const clearForm = () => {
     setSchoolName('');
-    setVisitDate('');
-    setVisitType('زيارة إشرافية');
-    setObservations('');
-    setStrengths('');
-    setNeeds('');
-    setRecommendations('');
-    setResult('');
+    setVisitDate(new Date().toISOString().slice(0, 10));
+    setVisitType(visitTypes[0]);
+    setObservations(''); setActions(''); setProposals(''); setFollowUp(''); setResult('');
   };
 
-  const copySuggestion = () => {
-    // سيتم ربط هذه الوظيفة لاحقاً بحفظ التقرير أو إرساله إلى نموذج الزيارة.
-    if (!result) return;
-  };
+  return <>
+    <Stack.Screen options={{ title: 'مساعد صياغة الزيارة', headerShown: false }} />
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
+          <Pressable style={styles.back} onPress={() => router.back()}><Text style={styles.backText}>رجوع</Text></Pressable>
+          <View style={{ flex: 1 }}><Text style={styles.kicker}>✦ المساعد الذكي</Text><Text style={styles.title}>مساعد صياغة الزيارة</Text><Text style={styles.subtitle}>صياغة مبنية على الزيارة الحالية والسجل المهني السابق والمرجع التشريعي الموثق.</Text></View>
+        </View>
 
-  return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'مساعد صياغة الزيارة',
-          headerShown: false,
-        }}
-      />
+        <View style={styles.info}>
+          <Text style={styles.infoTitle}>السياق المهني متصل</Text>
+          <Text style={styles.infoText}>الزيارات المسجلة: {visits.length} · المكتملة: {context.history.completedVisits} · المؤجلة: {context.history.postponedVisits}</Text>
+          <Text style={styles.infoText}>المراجع التشريعية المرشحة: {legal.candidates.length}</Text>
+        </View>
 
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <Pressable
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.backButtonText}>رجوع</Text>
-            </Pressable>
+        <View style={styles.card}>
+          <Text style={styles.section}>بيانات الزيارة</Text>
+          <Text style={styles.label}>المدرسة</Text>
+          <TextInput value={schoolName} onChangeText={setSchoolName} placeholder={schools[0]?.name || 'اسم المدرسة'} placeholderTextColor="#8aa0a8" style={styles.input} textAlign="right" />
+          <Text style={styles.label}>تاريخ الزيارة</Text>
+          <TextInput value={visitDate} onChangeText={setVisitDate} placeholder="2026-09-02" placeholderTextColor="#8aa0a8" style={styles.input} textAlign="right" />
+          <Text style={styles.label}>نوع الزيارة</Text>
+          <View style={styles.types}>{visitTypes.slice(0, 6).map(type => <Pressable key={type} onPress={() => setVisitType(type)} style={[styles.type, visitType === type && styles.typeActive]}><Text style={[styles.typeText, visitType === type && styles.typeTextActive]}>{type}</Text></Pressable>)}</View>
+        </View>
 
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.logo}>✦</Text>
-              <Text style={styles.title}>مساعد صياغة الزيارة</Text>
-              <Text style={styles.subtitle}>
-                أداة تساعد المشرف على إعداد صياغة مهنية للزيارة بناءً على
-                المعطيات المدخلة
-              </Text>
-            </View>
-          </View>
+        <View style={styles.card}>
+          <Text style={styles.section}>معطيات الزيارة</Text>
+          <Field label="الملاحظات والمشاهدات" value={observations} onChange={setObservations} placeholder="ما الذي شاهده المشرف؟" />
+          <Field label="الإجراءات المتخذة فعليًا" value={actions} onChange={setActions} placeholder="ما تم اتخاذه فعليًا أثناء الزيارة" />
+          <Field label="المقترحات والتوصيات" value={proposals} onChange={setProposals} placeholder="ما يقترحه المشرف للمتابعة والمعالجة" />
+          <Field label="المتابعة المقترحة" value={followUp} onChange={setFollowUp} placeholder="ما الذي ينبغي متابعته لاحقًا؟" />
+          <Pressable style={[styles.generate, loading && styles.disabled]} onPress={generateSuggestion} disabled={loading}>{loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateText}>✦ إنشاء صياغة واعية بالسجل</Text>}</Pressable>
+          <Pressable style={styles.clear} onPress={clearForm}><Text style={styles.clearText}>مسح البيانات</Text></Pressable>
+        </View>
 
-          <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>المساعد الذكي</Text>
-            <Text style={styles.infoText}>
-              أدخل ملاحظاتك كما هي، وسنحوّلها إلى صياغة منظمة ومهنية قابلة
-              للمراجعة والتعديل.
-            </Text>
-          </View>
+        {result ? <View style={styles.result}><View style={styles.resultHead}><Text style={styles.resultTitle}>الصياغة المقترحة</Text><Text style={styles.badge}>AI</Text></View><Text style={styles.resultText}>{result}</Text><Pressable style={styles.use} onPress={() => router.push('/visit-form')}><Text style={styles.useText}>استخدامها في نموذج الزيارة</Text></Pressable></View> : null}
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>بيانات الزيارة</Text>
+        <View style={styles.notice}><Text style={styles.noticeTitle}>مهم</Text><Text style={styles.noticeText}>لا يستنتج النظام شخصية المشرف. يستخدم السجل لفهم الاستمرارية المهنية فقط، ولا يفترض تنفيذ توصية سابقة إلا إذا أثبتها السجل.</Text></View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  </>;
+}
 
-            <Text style={styles.label}>اسم المدرسة</Text>
-            <TextInput
-              value={schoolName}
-              onChangeText={setSchoolName}
-              placeholder="مثال: مدرسة النور الابتدائية"
-              placeholderTextColor="#999"
-              style={styles.input}
-              textAlign="right"
-            />
-
-            <Text style={styles.label}>تاريخ الزيارة</Text>
-            <TextInput
-              value={visitDate}
-              onChangeText={setVisitDate}
-              placeholder="مثال: 24-08-2026"
-              placeholderTextColor="#999"
-              style={styles.input}
-              textAlign="right"
-            />
-
-            <Text style={styles.label}>نوع الزيارة</Text>
-            <View style={styles.typeRow}>
-              {[
-                'زيارة إشرافية',
-                'زيارة متابعة',
-                'زيارة تقويمية',
-              ].map((type) => (
-                <Pressable
-                  key={type}
-                  onPress={() => setVisitType(type)}
-                  style={[
-                    styles.typeButton,
-                    visitType === type && styles.typeButtonActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      visitType === type &&
-                        styles.typeButtonTextActive,
-                    ]}
-                  >
-                    {type}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>معطيات الزيارة</Text>
-
-            <Text style={styles.label}>الملاحظات والمشاهدات</Text>
-            <TextInput
-              value={observations}
-              onChangeText={setObservations}
-              placeholder="اكتب ما شاهدته أثناء الزيارة..."
-              placeholderTextColor="#999"
-              style={[styles.input, styles.textArea]}
-              multiline
-              textAlign="right"
-              textAlignVertical="top"
-            />
-
-            <Text style={styles.label}>جوانب القوة</Text>
-            <TextInput
-              value={strengths}
-              onChangeText={setStrengths}
-              placeholder="ما الجوانب الإيجابية التي لاحظتها؟"
-              placeholderTextColor="#999"
-              style={[styles.input, styles.textArea]}
-              multiline
-              textAlign="right"
-              textAlignVertical="top"
-            />
-
-            <Text style={styles.label}>الجوانب التي تحتاج إلى متابعة</Text>
-            <TextInput
-              value={needs}
-              onChangeText={setNeeds}
-              placeholder="ما الأمور التي تحتاج إلى معالجة أو تطوير؟"
-              placeholderTextColor="#999"
-              style={[styles.input, styles.textArea]}
-              multiline
-              textAlign="right"
-              textAlignVertical="top"
-            />
-
-            <Text style={styles.label}>التوصيات المقترحة</Text>
-            <TextInput
-              value={recommendations}
-              onChangeText={setRecommendations}
-              placeholder="اكتب التوصيات أو الإجراءات المقترحة..."
-              placeholderTextColor="#999"
-              style={[styles.input, styles.textArea]}
-              multiline
-              textAlign="right"
-              textAlignVertical="top"
-            />
-
-            <Pressable
-              style={[
-                styles.generateButton,
-                loading && styles.buttonDisabled,
-              ]}
-              onPress={generateSuggestion}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.generateIcon}>✦</Text>
-                  <Text style={styles.generateButtonText}>
-                    إنشاء صياغة مقترحة
-                  </Text>
-                </>
-              )}
-            </Pressable>
-
-            <Pressable
-              style={styles.clearButton}
-              onPress={clearForm}
-            >
-              <Text style={styles.clearButtonText}>مسح البيانات</Text>
-            </Pressable>
-          </View>
-
-          {result ? (
-            <View style={styles.resultCard}>
-              <View style={styles.resultHeader}>
-                <View>
-                  <Text style={styles.resultTitle}>
-                    الصياغة المقترحة
-                  </Text>
-                  <Text style={styles.resultSubtitle}>
-                    راجع النص وعدّل عليه قبل اعتماده
-                  </Text>
-                </View>
-
-                <Text style={styles.aiBadge}>AI</Text>
-              </View>
-
-              <View style={styles.resultContent}>
-                <Text style={styles.resultText}>{result}</Text>
-              </View>
-
-              <View style={styles.resultActions}>
-                <Pressable
-                  style={styles.primaryAction}
-                  onPress={copySuggestion}
-                >
-                  <Text style={styles.primaryActionText}>
-                    استخدام الصياغة
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.secondaryAction}
-                  onPress={() => setResult('')}
-                >
-                  <Text style={styles.secondaryActionText}>
-                    إغلاق
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
-
-          <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>مهم</Text>
-            <Text style={styles.noticeText}>
-              هذه الصياغة مقترحة للمساعدة فقط. يبقى اعتماد التقرير
-              وتعديله من مسؤولية المشرف قبل الحفظ أو الإرسال.
-            </Text>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </>
-  );
+function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+  return <><Text style={styles.label}>{label}</Text><TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#8aa0a8" style={[styles.input, styles.area]} multiline textAlign="right" textAlignVertical="top" /></>;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f4f7f8',
-  },
-
-  content: {
-    padding: 18,
-    paddingBottom: 40,
-  },
-
-  header: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-
-  headerTextContainer: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-
-  backButton: {
-    minWidth: 64,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#e3eeee',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
-
-  backButtonText: {
-    color: '#14515f',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  logo: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#14515f',
-    color: '#fff',
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontSize: 24,
-    marginBottom: 6,
-  },
-
-  title: {
-    fontSize: 25,
-    fontWeight: '800',
-    color: '#123f4b',
-    textAlign: 'right',
-  },
-
-  subtitle: {
-    marginTop: 5,
-    fontSize: 13,
-    color: '#718087',
-    textAlign: 'right',
-    lineHeight: 21,
-  },
-
-  infoBox: {
-    backgroundColor: '#e4f2f1',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#cce5e3',
-  },
-
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#14515f',
-    textAlign: 'right',
-    marginBottom: 5,
-  },
-
-  infoText: {
-    fontSize: 13,
-    color: '#52676c',
-    textAlign: 'right',
-    lineHeight: 21,
-  },
-
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#e1e8ea',
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#183f49',
-    textAlign: 'right',
-    marginBottom: 16,
-  },
-
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#33444a',
-    textAlign: 'right',
-    marginBottom: 7,
-    marginTop: 8,
-  },
-
-  input: {
-    minHeight: 50,
-    borderWidth: 1,
-    borderColor: '#d7e0e2',
-    borderRadius: 11,
-    backgroundColor: '#fafcfc',
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: '#26383d',
-  },
-
-  textArea: {
-    minHeight: 115,
-    paddingTop: 13,
-  },
-
-  typeRow: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-
-  typeButton: {
-    borderWidth: 1,
-    borderColor: '#d3dfe1',
-    backgroundColor: '#fafcfc',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 10,
-  },
-
-  typeButtonActive: {
-    backgroundColor: '#14515f',
-    borderColor: '#14515f',
-  },
-
-  typeButtonText: {
-    fontSize: 12,
-    color: '#53656a',
-  },
-
-  typeButtonTextActive: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-
-  generateButton: {
-    height: 52,
-    borderRadius: 11,
-    backgroundColor: '#1f5b86',
-    marginTop: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  buttonDisabled: {
-    opacity: 0.65,
-  },
-
-  generateIcon: {
-    color: '#fff',
-    fontSize: 19,
-  },
-
-  generateButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-
-  clearButton: {
-    height: 44,
-    borderRadius: 10,
-    marginTop: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  clearButtonText: {
-    color: '#68787d',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  resultCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#cbdfe1',
-  },
-
-  resultHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-
-  resultTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#143f4a',
-    textAlign: 'right',
-  },
-
-  resultSubtitle: {
-    fontSize: 12,
-    color: '#7b898d',
-    textAlign: 'right',
-    marginTop: 4,
-  },
-
-  aiBadge: {
-    backgroundColor: '#e3f1ef',
-    color: '#14515f',
-    fontSize: 13,
-    fontWeight: '900',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-
-  resultContent: {
-    backgroundColor: '#f8fafb',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e3e9eb',
-  },
-
-  resultText: {
-    fontSize: 14,
-    lineHeight: 27,
-    color: '#293c42',
-    textAlign: 'right',
-  },
-
-  resultActions: {
-    flexDirection: 'row-reverse',
-    gap: 9,
-    marginTop: 14,
-  },
-
-  primaryAction: {
-    flex: 1,
-    height: 46,
-    borderRadius: 10,
-    backgroundColor: '#14515f',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  primaryActionText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-
-  secondaryAction: {
-    width: 90,
-    height: 46,
-    borderRadius: 10,
-    backgroundColor: '#eef2f3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  secondaryActionText: {
-    color: '#52646a',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  notice: {
-    backgroundColor: '#fff9e8',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#f0e2b5',
-  },
-
-  noticeTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#856b1d',
-    textAlign: 'right',
-    marginBottom: 4,
-  },
-
-  noticeText: {
-    fontSize: 12,
-    color: '#75683f',
-    textAlign: 'right',
-    lineHeight: 20,
-  },
+  container: { flex: 1, backgroundColor: '#f2f9fc' }, content: { padding: 18, paddingBottom: 44 },
+  header: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, marginBottom: 16 }, back: { paddingHorizontal: 14, height: 40, borderRadius: 12, backgroundColor: '#dff2fa', justifyContent: 'center' }, backText: { color: '#17617a', fontWeight: '800' },
+  kicker: { color: '#2381a0', fontWeight: '800', textAlign: 'right' }, title: { color: '#123f4b', fontSize: 25, fontWeight: '900', textAlign: 'right', marginTop: 2 }, subtitle: { color: '#6d838c', fontSize: 13, lineHeight: 20, textAlign: 'right', marginTop: 5 },
+  info: { backgroundColor: '#e1f4fb', borderWidth: 1, borderColor: '#c7e8f3', borderRadius: 16, padding: 15, marginBottom: 14 }, infoTitle: { color: '#16627b', fontSize: 16, fontWeight: '900', textAlign: 'right' }, infoText: { color: '#58747e', fontSize: 13, textAlign: 'right', marginTop: 5 },
+  card: { backgroundColor: '#fff', borderRadius: 18, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#deeaee' }, section: { color: '#164b5b', fontSize: 18, fontWeight: '900', textAlign: 'right', marginBottom: 12 }, label: { color: '#345b66', fontSize: 14, fontWeight: '800', textAlign: 'right', marginTop: 10, marginBottom: 6 }, input: { minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: '#d6e4e9', backgroundColor: '#fbfdfe', paddingHorizontal: 13, color: '#183f49', fontSize: 14 }, area: { minHeight: 86, paddingTop: 12 }, types: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7 }, type: { paddingHorizontal: 10, paddingVertical: 9, borderRadius: 11, backgroundColor: '#eef5f7' }, typeActive: { backgroundColor: '#d9f1fa', borderWidth: 1, borderColor: '#a9dcec' }, typeText: { color: '#59717a', fontSize: 12, fontWeight: '700' }, typeTextActive: { color: '#17617a' },
+  generate: { marginTop: 18, height: 52, borderRadius: 14, backgroundColor: '#2381a0', justifyContent: 'center', alignItems: 'center' }, disabled: { opacity: .65 }, generateText: { color: '#fff', fontWeight: '900', fontSize: 15 }, clear: { alignItems: 'center', padding: 13 }, clearText: { color: '#71858c', fontWeight: '700' },
+  result: { backgroundColor: '#fff', borderRadius: 18, padding: 18, borderWidth: 1, borderColor: '#bfe1ec', marginBottom: 14 }, resultHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }, resultTitle: { color: '#164b5b', fontSize: 18, fontWeight: '900' }, badge: { color: '#fff', backgroundColor: '#2381a0', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, fontWeight: '900' }, resultText: { color: '#294e58', fontSize: 14, lineHeight: 24, textAlign: 'right' }, use: { marginTop: 16, height: 48, borderRadius: 13, backgroundColor: '#e1f4fb', justifyContent: 'center', alignItems: 'center' }, useText: { color: '#17617a', fontWeight: '900' },
+  notice: { padding: 15, borderRadius: 15, backgroundColor: '#f7fbfc', borderWidth: 1, borderColor: '#e2ecef' }, noticeTitle: { color: '#476a73', fontWeight: '900', textAlign: 'right' }, noticeText: { color: '#6b8087', fontSize: 12, lineHeight: 20, textAlign: 'right', marginTop: 5 },
 });
