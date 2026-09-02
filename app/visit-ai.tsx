@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStore, visitTypes } from '@/context/AppContext';
@@ -7,6 +7,7 @@ import { buildVisitAiContext } from '@/utils/visitAiContext';
 import { buildLegalAiContext } from '@/utils/legalAiContext';
 
 export const VISIT_AI_DRAFT_KEY = '@edu_supervision/visit_ai_draft';
+const AI_WORKER_URL = (process.env.EXPO_PUBLIC_AI_WORKER_URL || '').trim().replace(/\/$/, '');
 
 type VisitAiDraft = {
   schoolName: string;
@@ -35,55 +36,77 @@ export default function VisitAIScreen() {
   const context = useMemo(() => buildVisitAiContext({ schoolName, visitDate, visitType, observations, actions, proposals, followUp }, visits), [schoolName, visitDate, visitType, observations, actions, proposals, followUp, visits]);
   const legal = useMemo(() => buildLegalAiContext({ visitType, observations, actions, proposals }), [visitType, observations, actions, proposals]);
 
-  const generateSuggestion = () => {
+  const generateSuggestion = async () => {
+    if (loading) return;
+    if (!AI_WORKER_URL && Platform.OS !== 'web') {
+      Alert.alert('إعداد خدمة الذكاء الاصطناعي', 'أضف EXPO_PUBLIC_AI_WORKER_URL إلى بيئة التطبيق حتى يستطيع الهاتف الوصول إلى Worker الخاص بـ Gemini.');
+      return;
+    }
+
     setLoading(true);
     setResult('');
     setSuggested(null);
-    setTimeout(() => {
-      const school = schoolName.trim() || 'المدرسة';
-      const obs = observations.trim() || 'تمت متابعة واقع العمل التربوي والاطلاع على مستوى تنفيذ المهام ذات الصلة بالزيارة.';
-      const act = actions.trim() || 'لم تُسجل إجراءات تنفيذية محددة في المعطيات الحالية.';
-      const prop = proposals.trim() || 'يوصى بتحديد إجراءات متابعة واضحة وتوثيق مستوى الإنجاز في الزيارة اللاحقة.';
-      const follow = followUp.trim() || 'تُراجع النتائج في المتابعة القادمة وفق ما يثبته السجل.';
-      const continuity = context.history.recentVisits.length > 0
-        ? 'وبالنظر إلى سجل الزيارات السابقة، يمكن مراعاة استمرارية المتابعة عند وجود ارتباط مثبت بين الملاحظات أو التوصيات الحالية والسابقة.'
-        : 'لا توجد زيارات سابقة كافية لبناء استمرارية مهنية؛ لذلك تعتمد الصياغة على معطيات الزيارة الحالية.';
-      const legalText = legal.candidates.length
-        ? `السند التشريعي المحتمل: ${legal.references}`
-        : 'السند التشريعي: لا يوجد سند موثق مرتبط بشكل كافٍ بالمعطيات الحالية.';
 
+    try {
+      const endpoint = `${AI_WORKER_URL || ''}/api/ai/visit-draft`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolName,
+          visitDate,
+          visitType,
+          observations,
+          actions,
+          proposals,
+          followUp,
+          history: context.history.contextText,
+          legalReferences: legal.references,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) throw new Error(data?.error || 'تعذر الاتصال بخدمة الذكاء الاصطناعي.');
+
+      const ai = data.result || {};
       const draft: VisitAiDraft = {
-        schoolName: school,
-        visitDate: visitDate || new Date().toISOString().slice(0, 10),
-        visitType,
-        observations: obs,
-        actions: act,
-        proposals: prop,
-        followUp: follow,
+        schoolName: schoolName.trim() || 'المدرسة',
+        visitDate: ai.visitDate || visitDate || new Date().toISOString().slice(0, 10),
+        visitType: ai.visitType || visitType,
+        observations: typeof ai.observations === 'string' ? ai.observations.trim() : '',
+        actions: typeof ai.actions === 'string' ? ai.actions.trim() : '',
+        proposals: typeof ai.proposals === 'string' ? ai.proposals.trim() : '',
+        followUp: typeof ai.followUp === 'string' ? ai.followUp.trim() : '',
       };
+
       setSuggested(draft);
       setResult([
-        'صياغة زيارة إشرافية مقترحة',
-        `المدرسة: ${school}`,
+        'صياغة زيارة إشرافية مقترحة من Gemini',
+        `المدرسة: ${draft.schoolName}`,
         `التاريخ: ${draft.visitDate}`,
-        `نوع الزيارة: ${visitType}`,
+        `نوع الزيارة: ${draft.visitType}`,
         '',
-        'الملاحظات والمشاهدات', obs,
+        'الملاحظات والمشاهدات', draft.observations || 'لم تُنتج صياغة لهذا الحقل.',
         '',
-        'الإجراءات المتخذة فعليًا', act,
+        'الإجراءات المتخذة فعليًا', draft.actions || 'لم تُنتج صياغة لهذا الحقل.',
         '',
-        'المقترحات والتوصيات', prop,
+        'المقترحات والتوصيات', draft.proposals || 'لم تُنتج صياغة لهذا الحقل.',
         '',
-        'المتابعة', follow,
+        'المتابعة المقترحة', draft.followUp || 'لم تُنتج صياغة لهذا الحقل.',
         '',
-        continuity,
+        context.history.recentVisits.length > 0
+          ? 'تم استخدام السجل السابق لفهم الاستمرارية المهنية فقط، دون استنتاج شخصية المشرف أو افتراض تنفيذ توصيات سابقة.'
+          : 'لا توجد زيارات سابقة كافية لبناء سياق تراكمي؛ اعتمدت الصياغة على المعطيات الحالية.',
         '',
-        legalText,
+        legal.candidates.length ? `المراجع التشريعية المرشحة: ${legal.references}` : 'المراجع التشريعية: لا يوجد سند موثق مرتبط بشكل كافٍ بالمعطيات الحالية.',
         '',
-        'تنبيه: هذه صياغة مساعدة للمراجعة وليست اعتمادًا نهائيًا أو رأيًا قانونيًا ملزمًا.',
+        'تنبيه: هذه مسودة مساعدة للمراجعة وليست اعتمادًا نهائيًا أو رأيًا قانونيًا ملزمًا.',
       ].join('\n'));
+    } catch (error) {
+      Alert.alert('تعذر إنشاء المقترح', error instanceof Error ? error.message : 'حدث خطأ غير متوقع.');
+    } finally {
       setLoading(false);
-    }, 350);
+    }
   };
 
   const useInVisitForm = async () => {
@@ -105,7 +128,7 @@ export default function VisitAIScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Pressable style={styles.back} onPress={() => router.back()}><Text style={styles.backText}>رجوع</Text></Pressable>
-          <View style={{ flex: 1 }}><Text style={styles.kicker}>✦ المساعد الذكي</Text><Text style={styles.title}>مساعد صياغة الزيارة</Text><Text style={styles.subtitle}>صياغة مبنية على الزيارة الحالية والسجل المهني السابق والمرجع التشريعي الموثق.</Text></View>
+          <View style={{ flex: 1 }}><Text style={styles.kicker}>✦ المساعد الذكي · Gemini</Text><Text style={styles.title}>مساعد صياغة الزيارة</Text><Text style={styles.subtitle}>صياغة مبنية على الزيارة الحالية والسجل المهني السابق والمرجع التشريعي الموثق.</Text></View>
         </View>
         <View style={styles.info}>
           <Text style={styles.infoTitle}>السياق المهني متصل</Text>
@@ -130,7 +153,7 @@ export default function VisitAIScreen() {
           <Pressable style={[styles.generate, loading && styles.disabled]} onPress={generateSuggestion} disabled={loading}>{loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateText}>✦ إنشاء صياغة واعية بالسجل</Text>}</Pressable>
           <Pressable style={styles.clear} onPress={clearForm}><Text style={styles.clearText}>مسح البيانات</Text></Pressable>
         </View>
-        {result ? <View style={styles.result}><View style={styles.resultHead}><Text style={styles.resultTitle}>الصياغة المقترحة</Text><Text style={styles.badge}>AI</Text></View><Text style={styles.resultText}>{result}</Text><Text style={styles.editHint}>يمكن للمشرف مراجعة الصياغة وتعديلها أو حذفها في نموذج الزيارة قبل الحفظ.</Text><Pressable style={styles.use} onPress={useInVisitForm}><Text style={styles.useText}>استخدامها في نموذج الزيارة</Text></Pressable></View> : null}
+        {result ? <View style={styles.result}><View style={styles.resultHead}><Text style={styles.resultTitle}>الصياغة المقترحة</Text><Text style={styles.badge}>AI</Text></View><Text style={styles.resultText}>{result}</Text><Text style={styles.editHint}>المقترح لا يُحفظ تلقائيًا. عند استخدامه في نموذج الزيارة يستطيع المشرف تعديل أي حقل أو حذف محتواه قبل الحفظ.</Text><Pressable style={styles.use} onPress={useInVisitForm}><Text style={styles.useText}>استخدامها في نموذج الزيارة</Text></Pressable></View> : null}
         <View style={styles.notice}><Text style={styles.noticeTitle}>مهم</Text><Text style={styles.noticeText}>لا يستنتج النظام شخصية المشرف. يستخدم السجل لفهم الاستمرارية المهنية فقط، ولا يفترض تنفيذ توصية سابقة إلا إذا أثبتها السجل.</Text></View>
       </ScrollView>
     </KeyboardAvoidingView>
