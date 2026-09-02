@@ -14,35 +14,12 @@ type VisitAiDraft = { schoolName: string; visitDate: string; visitType: string; 
 export default function VisitForm() {
   const c = useColors(); const insets = useSafeAreaInsets(); const { schools, addVisit } = useStore();
   const [schoolId, setSchoolId] = useState(schools[0]?.id || ''); const [type, setType] = useState(visitTypes[0]); const [date, setDate] = useState('2026-08-20'); const [actions, setActions] = useState(''); const [proposals, setProposals] = useState(''); const [photoUri, setPhotoUri] = useState<string | undefined>();
-  const [observations, setObservations] = useState(''); const [followUp, setFollowUp] = useState('');
-
-  useEffect(() => {
-    const loadAiDraft = async () => {
-      const raw = await AsyncStorage.getItem(VISIT_AI_DRAFT_KEY);
-      if (!raw) return;
-      try {
-        const draft = JSON.parse(raw) as VisitAiDraft;
-        const school = schools.find(s => s.name === draft.schoolName);
-        if (school) setSchoolId(school.id);
-        if (draft.visitDate) setDate(draft.visitDate);
-        if (visitTypes.includes(draft.visitType)) setType(draft.visitType);
-        setObservations(draft.observations || '');
-        setActions(draft.actions || '');
-        setProposals(draft.proposals || '');
-        setFollowUp(draft.followUp || '');
-        await AsyncStorage.removeItem(VISIT_AI_DRAFT_KEY);
-      } catch {
-        await AsyncStorage.removeItem(VISIT_AI_DRAFT_KEY);
-      }
-    };
-    if (schools.length) loadAiDraft();
-  }, [schools]);
-
+  const [observations, setObservations] = useState(''); const [followUp, setFollowUp] = useState(''); const [fromAi, setFromAi] = useState(false);
+  useEffect(() => { const load = async () => { const raw = await AsyncStorage.getItem(VISIT_AI_DRAFT_KEY); if (!raw) return; try { const d = JSON.parse(raw) as VisitAiDraft; const school = schools.find(s => s.name === d.schoolName); if (school) setSchoolId(school.id); if (d.visitDate) setDate(d.visitDate); if (visitTypes.includes(d.visitType)) setType(d.visitType); setObservations(d.observations || ''); setActions(d.actions || ''); setProposals(d.proposals || ''); setFollowUp(d.followUp || ''); setFromAi(true); await AsyncStorage.removeItem(VISIT_AI_DRAFT_KEY); } catch { await AsyncStorage.removeItem(VISIT_AI_DRAFT_KEY); } }; if (schools.length) load(); }, [schools]);
   const takePhoto = async () => { const permission = await ImagePicker.requestCameraPermissionsAsync(); if (!permission.granted) return Alert.alert('صلاحية الكاميرا', 'اسمح للتطبيق باستخدام الكاميرا لتصوير سجل الزيارة'); const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: .8, allowsEditing: true }); if (!result.canceled) setPhotoUri(result.assets[0]?.uri); };
-  const save = () => { if (!schoolId) return Alert.alert('بيانات ناقصة', 'اختر المدرسة ونوع الزيارة'); addVisit({ schoolId, date, type, actions: [observations, actions].filter(Boolean).join('\n\n'), proposals: [proposals, followUp ? `المتابعة المقترحة: ${followUp}` : ''].filter(Boolean).join('\n\n'), status: 'completed', photoUri }); router.back(); };
-
+  const save = () => { if (!schoolId) return Alert.alert('بيانات ناقصة', 'اختر المدرسة ونوع الزيارة'); addVisit({ schoolId, date, type, observations, actions, proposals, followUp, status: 'completed', photoUri }); router.back(); };
   return <View style={[styles.page, { backgroundColor: c.background }]}><View style={[styles.header, { paddingTop: insets.top + 12 }]}><Pressable onPress={() => router.back()}><Feather name="arrow-right" size={23} color={c.foreground} /></Pressable><Text style={[styles.title, { color: c.foreground }]}>تسجيل زيارة</Text><View style={{ width: 24 }} /></View><ScrollView contentContainerStyle={{ paddingBottom: 45 }} keyboardShouldPersistTaps="handled">
-    <View style={[styles.aiNotice, { backgroundColor: c.secondary, borderColor: c.border }]}><Feather name="edit-3" size={18} color={c.primary} /><Text style={[styles.aiNoticeText, { color: c.foreground }]}>تم إدخال مقترحات المساعد الذكي. راجعها وعدّلها أو احذف ما لا تريده قبل الحفظ.</Text></View>
+    {fromAi && <View style={[styles.aiNotice, { backgroundColor: c.secondary, borderColor: c.border }]}><Feather name="edit-3" size={18} color={c.primary} /><Text style={[styles.aiNoticeText, { color: c.foreground }]}>تم إدخال مقترحات المساعد الذكي. راجعها وعدّلها أو احذف ما لا تريده قبل الحفظ.</Text></View>}
     <Text style={[styles.label, { color: c.foreground }]}>المدرسة</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{schools.map(s => <Pressable key={s.id} onPress={() => setSchoolId(s.id)} style={[styles.chip, { backgroundColor: schoolId === s.id ? c.primary : c.card, borderColor: schoolId === s.id ? c.primary : c.border }]}><Text style={{ color: schoolId === s.id ? c.primaryForeground : c.foreground, fontFamily: 'Inter_500Medium', fontSize: 11 }}>{s.name}</Text></Pressable>)}</ScrollView>
     <Text style={[styles.label, { color: c.foreground }]}>نوع الزيارة</Text><View style={styles.wrap}>{visitTypes.map(t => <Pressable key={t} onPress={() => setType(t)} style={[styles.type, { backgroundColor: type === t ? c.secondary : c.card, borderColor: type === t ? c.primary : c.border }]}><Text style={{ color: type === t ? c.primary : c.foreground, fontFamily: 'Inter_500Medium', fontSize: 11 }}>{t}</Text></Pressable>)}</View>
     <Field label="تاريخ الزيارة" value={date} onChangeText={setDate} c={c} /><Field label="الملاحظات والمشاهدات" value={observations} onChangeText={setObservations} placeholder="ما شاهده المشرف" c={c} multiline /><Field label="الإجراءات المتخذة فعليًا" value={actions} onChangeText={setActions} placeholder="ما تم اتخاذه فعليًا أثناء الزيارة" c={c} multiline /><Field label="المقترحات والتوصيات" value={proposals} onChangeText={setProposals} placeholder="ما يقترحه المشرف للمتابعة والمعالجة" c={c} multiline /><Field label="المتابعة المقترحة" value={followUp} onChangeText={setFollowUp} placeholder="ما الذي ينبغي متابعته لاحقًا؟" c={c} multiline />
