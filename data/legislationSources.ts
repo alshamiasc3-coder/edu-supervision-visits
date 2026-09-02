@@ -1,10 +1,10 @@
 export const officialGazetteSources = {
   teacherProtectionInstructions2021:
-    'https://mop.gov.iq/documents/legal_dept/informs/gazette/4661.pdf',
+    'https://moj.gov.iq/upload/pdf/4661.pdf',
   vocationalEducation2016:
-    'ملف الوقائع العراقية المرفق في المشروع: العدد 4427 بتاريخ 2016-12-12',
+    'الوقائع العراقية، العدد 4427 بتاريخ 2016-12-12',
   teacherProtection2018:
-    'الوقائع العراقية، العدد 4486 بتاريخ 2018-04-09',
+    'https://moj.gov.iq/upload/pdf/4486.pdf',
   ministryEducationAmendment2025:
     'https://moj.gov.iq/upload/pdf/13187abe0a88ba2e_4841_compressed.pdf',
   stateEmployeeDiscipline1991:
