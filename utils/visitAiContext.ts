@@ -1,5 +1,6 @@
 import type { Visit } from '@/context/AppContext';
 import { buildVisitHistoryProfile } from '@/utils/visitHistory';
+import { buildLegalAiContext } from '@/utils/legalAiContext';
 
 export type VisitAiInput = {
   schoolName?: string;
@@ -15,6 +16,7 @@ export type VisitAiInput = {
 
 export function buildVisitAiContext(input: VisitAiInput, visits: Visit[]) {
   const history = buildVisitHistoryProfile(visits);
+  const legal = buildLegalAiContext(input);
 
   const currentVisit = [
     `المدرسة: ${input.schoolName?.trim() || 'غير محددة'}`,
@@ -35,11 +37,28 @@ export function buildVisitAiContext(input: VisitAiInput, visits: Visit[]) {
     'فرّق بوضوح بين الإجراءات المتخذة فعليًا وبين المقترحات والتوصيات والمتابعة اللاحقة.',
     'إذا وجدت توصية سابقة مرتبطة بالزيارة الحالية، اقترح صياغة تشير إلى الاستمرارية دون الادعاء بتنفيذها ما لم يثبت ذلك في السجل.',
     'عند نقص البيانات، صرّح بالنقص بدل ملئه بتخمين.',
-    'أي رأي قانوني أو استناد تشريعي يجب أن يعتمد فقط على مصدر تشريعي موثق يقدمه النظام، مع ذكر رقم القانون والمادة والعدد عند توفرها.',
+    'استخدم المراجع التشريعية الموثقة أدناه كمرجع فقط، ولا تخترع أرقام مواد أو فقرات أو أحكامًا غير موفرة في النص الموثق.',
+    'إذا لم يتوفر نص المادة ذات الصلة، اذكر اسم التشريع والعدد فقط ووجّه المستخدم إلى الرجوع للنص الرسمي.',
+    'لا تستخدم أي تشريع غير موثق في النظام كأساس لتوصية قانونية.',
   ].join('\n');
 
   return {
     history,
-    prompt: `${instructions}\n\nمعطيات الزيارة الحالية:\n${currentVisit}\n\nالسياق المهني التراكمي للزيارات السابقة:\n${history.contextText || 'لا توجد زيارات سابقة مسجلة.'}`,
+    legal,
+    prompt: [
+      instructions,
+      '',
+      'معطيات الزيارة الحالية:',
+      currentVisit,
+      '',
+      'السياق المهني التراكمي للزيارات السابقة:',
+      history.contextText || 'لا توجد زيارات سابقة مسجلة.',
+      '',
+      'السياق التشريعي الموثق المرشح:',
+      legal.references,
+      '',
+      'تعليمات استخدام المرجع التشريعي:',
+      legal.instruction,
+    ].join('\n'),
   };
 }
