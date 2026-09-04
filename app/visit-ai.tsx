@@ -1,1111 +1,157 @@
 import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
-import {
-  router,
-  useLocalSearchParams,
-} from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { useColors } from '@/hooks/useColors';
+import { useStore, visitTypes } from '@/context/AppContext';
 
-type VisitType = string;
-
-/* =========================================================
-   VISIT TYPE LABELS
-   نوع الزيارة
-========================================================= */
-
-const VISIT_TYPE_LABELS: Record<string, string> = {
-  'زيارة اختصاص': 'زيارة اختصاص',
-  'زيارة متابعة': 'زيارة متابعة',
-  'زيارة صديق ناقد': 'زيارة صديق ناقد',
-  'زيارة تحقق': 'زيارة تحقق',
-  'زيارة تحقيق': 'زيارة تحقيق',
-  'زيارة تقويمية': 'زيارة تقويمية',
-  'زيارة غير تقويمية': 'زيارة غير تقويمية',
-};
-
-/* =========================================================
-   NORMALIZE VISIT TYPE
-
-   نوع الزيارة يأتي مباشرة من visit-form
-   ولا يتم استنتاجه من الإجراءات.
-========================================================= */
-
-function normalizeVisitType(
-  value?: string | string[]
-): VisitType {
-  const type = Array.isArray(value) ? value[0] : value;
-  return type?.trim() || 'زيارة متابعة';
-}
-
-/* =========================================================
-   MAIN SCREEN
-========================================================= */
+const asString = (v?: string | string[] | null) => Array.isArray(v) ? v[0] ?? '' : v?.toString() ?? '';
 
 export default function VisitAI() {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const { visits } = useStore();
+  const params = useLocalSearchParams<{ visitId?: string; schoolId?: string; schoolName?: string; visitType?: string; type?: string }>();
+  const schoolId = asString(params.schoolId);
+  const schoolName = asString(params.schoolName) || 'المدرسة';
+  const visitType = asString(params.visitType || params.type) || visitTypes[0] || 'زيارة اختصاص';
+  const [photoUri, setPhotoUri] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const params = useLocalSearchParams<{
-    visitId?: string;
-    schoolName?: string;
+  const previousVisits = useMemo(() => visits
+    .filter(v => v.schoolId === schoolId && v.id !== asString(params.visitId))
+    .sort((a, b) => b.date.localeCompare(a.date)), [visits, schoolId, params.visitId]);
 
-    /*
-     * نوع الزيارة
-     */
-    visitType?: string;
-
-    /*
-     * الإجراءات
-     */
-    procedure?: string;
-    actions?: string;
-
-    /*
-     * بيانات الذكاء الاصطناعي
-     */
-    aiActions?: string;
-    aiNotes?: string;
-    aiRecommendations?: string;
-    aiFollowUp?: string;
-  }>();
-
-  /* =======================================================
-     VISIT TYPE
-  ======================================================= */
-
-  const visitType = useMemo(() => {
-    return normalizeVisitType(
-      params.visitType
-    );
-  }, [params.visitType]);
-
-  const typeLabel =
-    VISIT_TYPE_LABELS[visitType];
-
-  /* =======================================================
-     INITIAL PROCEDURE
-  ======================================================= */
-
-  const initialProcedure = useMemo(() => {
-    return (
-      params.procedure ||
-      params.actions ||
-      params.aiActions ||
-      ''
-    ).toString();
-  }, [
-    params.procedure,
-    params.actions,
-    params.aiActions,
-  ]);
-
-  const [procedure, setProcedure] =
-    useState(initialProcedure);
-
-  const [actions, setActions] =
-    useState(initialProcedure);
-
-  /* =======================================================
-     AI TEXT
-  ======================================================= */
-
-  const [notes, setNotes] =
-    useState(
-      params.aiNotes?.toString() ||
-        'اضغط على «إعداد الصياغة الذكية» لإنشاء الملاحظات المناسبة لنوع الزيارة والإجراءات المحددة.'
-    );
-
-  const [recommendations, setRecommendations] =
-    useState(
-      params.aiRecommendations?.toString() ||
-        'سيتم إنشاء التوصيات والإجراءات المقترحة بناءً على نوع الزيارة والإجراءات المحددة.'
-    );
-
-  const [followUp, setFollowUp] =
-    useState(
-      params.aiFollowUp?.toString() ||
-        'سيتم إنشاء خطة متابعة مرتبطة مباشرة بنوع الزيارة والإجراءات بعد إعداد الصياغة الذكية.'
-    );
-
-  const [loading, setLoading] =
-    useState(false);
-
-  /* =======================================================
-     PREPARE AI
-  ======================================================= */
-
-  const prepareAI = async () => {
-    setLoading(true);
-
+  const takePhoto = async () => {
     try {
-      const currentProcedure =
-        actions.trim() ||
-        procedure.trim();
+      setMessage('');
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) { setMessage('يرجى السماح للتطبيق باستخدام الكاميرا.'); return; }
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85, allowsEditing: false });
+      if (!result.canceled && result.assets?.[0]?.uri) setPhotoUri(result.assets[0].uri);
+    } catch { setMessage('تعذر فتح الكاميرا. حاول مرة أخرى.'); }
+  };
 
-      if (!currentProcedure) {
-        throw new Error(
-          'يرجى إدخال الإجراءات أو التوصيات أولًا.'
-        );
-      }
+  const choosePhoto = async () => {
+    try {
+      setMessage('');
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) { setMessage('يرجى السماح للتطبيق بالوصول إلى الصور.'); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
+      if (!result.canceled && result.assets?.[0]?.uri) setPhotoUri(result.assets[0].uri);
+    } catch { setMessage('تعذر اختيار الصورة.'); }
+  };
 
-      const schoolName =
-        params.schoolName?.toString() || '';
-
-      /* ===================================================
-         إرسال البيانات إلى الخادم
-
-         visitType = نوع الزيارة
-         procedure = الإجراءات
-         schoolName = اسم المدرسة
-      =================================================== */
-
-      const response = await fetch(
-        `${(process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '')}/api/ai/visit-draft`,
-        {
-          method: 'POST',
-
-          headers: {
-            'Content-Type':
-              'application/json',
-          },
-
-          body: JSON.stringify({
-            visitType: visitType,
-
-            procedure:
-              currentProcedure,
-
-            schoolName:
-              schoolName,
-          }),
-        }
-      );
-
-      const data =
-        await response.json();
-
-      if (!response.ok || !data?.ok) {
-        throw new Error(
-          data?.error ||
-            'تعذر الاتصال بخدمة الذكاء الاصطناعي.'
-        );
-      }
-
-      const draft =
-        data.result;
-
-      /* ===================================================
-         NOTES
-      =================================================== */
-
-      setNotes(
-        String(
-          draft?.notes || ''
-        ).trim()
-      );
-
-      /* ===================================================
-         RECOMMENDATIONS
-      =================================================== */
-
-      setRecommendations(
-        String(
-          draft?.recommendations || ''
-        ).trim()
-      );
-
-      /* ===================================================
-         FOLLOW UP
-      =================================================== */
-
-      setFollowUp(
-        String(
-          draft?.followUp || ''
-        ).trim()
-      );
-
-    } catch (error) {
-      console.error(
-        'AI visit draft error:',
-        error
-      );
-
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'حدث خطأ أثناء إعداد الصياغة الذكية.';
-
-      setNotes(
-        `تعذر إنشاء الصياغة الذكية: ${message}`
-      );
-
-      setRecommendations('');
-      setFollowUp('');
-
-    } finally {
+  const continueToAnalysis = () => {
+    if (!photoUri) { setMessage('التقط صورة صفحة سجل الزيارة أولًا.'); return; }
+    setLoading(true);
+    setTimeout(() => {
       setLoading(false);
-    }
+      setMessage('تم تجهيز الصورة. الخطوة التالية ستكون ربط القراءة الذكية بالصورة والزيارات السابقة.');
+    }, 250);
   };
-
-  /* =======================================================
-     USE DRAFT
-
-     إعادة البيانات إلى visit-form
-  ======================================================= */
-
-  const useDraft = () => {
-    const finalActions =
-      actions.trim() ||
-      procedure.trim();
-
-    router.push({
-      pathname: '/visit-form',
-
-      params: {
-        visitId:
-          params.visitId?.toString() || '',
-
-        schoolName:
-          params.schoolName?.toString() || '',
-
-        /* نوع الزيارة */
-        visitType:
-          visitType,
-
-        /* الإجراءات */
-        procedure:
-          finalActions,
-
-        actions:
-          finalActions,
-
-        aiActions:
-          finalActions,
-
-        /* صياغة الذكاء الاصطناعي */
-        aiNotes:
-          notes,
-
-        aiRecommendations:
-          recommendations,
-
-        aiFollowUp:
-          followUp,
-      },
-    });
-  };
-
-  /* =======================================================
-     UI
-  ======================================================= */
 
   return (
-    <View
-      style={[
-        styles.page,
-        {
-          backgroundColor:
-            c.background,
-        },
-      ]}
-    >
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop:
-              insets.top + 10,
-
-            borderBottomColor:
-              c.border,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={() =>
-            router.back()
-          }
-          style={styles.backButton}
-        >
-          <Feather
-            name="arrow-right"
-            size={23}
-            color={c.foreground}
-          />
+    <View style={[styles.page, { backgroundColor: c.background }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 10, borderBottomColor: c.border }]}>
+        <Pressable onPress={() => router.back()} style={styles.back}>
+          <Feather name="arrow-right" size={23} color={c.foreground} />
         </Pressable>
-
-        <View
-          style={
-            styles.headerText
-          }
-        >
-          <Text
-            style={[
-              styles.title,
-              {
-                color:
-                  c.foreground,
-              },
-            ]}
-          >
-            المساعد الذكي للزيارة
-          </Text>
-
-          <Text
-            style={[
-              styles.subtitle,
-              {
-                color:
-                  c.mutedForeground,
-              },
-            ]}
-          >
-            صياغة الملاحظات والتوصيات بصورة تربوية ومهنية
-          </Text>
+        <View style={styles.headerText}>
+          <Text style={[styles.title, { color: c.foreground }]}>المساعد الذكي للزيارة</Text>
+          <Text style={[styles.subtitle, { color: c.mutedForeground }]}>قراءة سجل المدرسة وبناء مسودة الزيارة</Text>
         </View>
-
-        <View
-          style={[
-            styles.aiIcon,
-            {
-              backgroundColor:
-                c.accent,
-            },
-          ]}
-        >
-          <Feather
-            name="cpu"
-            size={22}
-            color={c.navy}
-          />
+        <View style={[styles.iconBox, { backgroundColor: c.secondary }]}>
+          <Feather name="cpu" size={22} color={c.primary} />
         </View>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={
-          false
-        }
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingBottom:
-              insets.bottom + 35,
-          },
-        ]}
-      >
-        {/* =================================================
-            VISIT INFORMATION
-
-            المعلومات الأساسية تظهر هنا فقط
-        ================================================= */}
-
-        <View
-          style={[
-            styles.infoCard,
-            {
-              backgroundColor:
-                c.card,
-
-              borderColor:
-                c.border,
-            },
-          ]}
-        >
-          {/* =================================================
-              المدرسة
-          ================================================= */}
-
-          {params.schoolName ? (
-            <>
-              <View
-                style={
-                  styles.infoRow
-                }
-              >
-                <Text
-                  style={[
-                    styles.infoLabel,
-                    {
-                      color:
-                        c.mutedForeground,
-                    },
-                  ]}
-                >
-                  المدرسة
-                </Text>
-
-                <Text
-                  style={[
-                    styles.infoValue,
-                    {
-                      color:
-                        c.foreground,
-                    },
-                  ]}
-                >
-                  {params.schoolName}
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.divider,
-                  {
-                    backgroundColor:
-                      c.border,
-                  },
-                ]}
-              />
-            </>
-          ) : null}
-
-          {/* =================================================
-              نوع الزيارة
-          ================================================= */}
-
-          <View
-            style={
-              styles.infoRow
-            }
-          >
-            <Text
-              style={[
-                styles.infoLabel,
-                {
-                  color:
-                    c.mutedForeground,
-                },
-              ]}
-            >
-              نوع الزيارة
-            </Text>
-
-            <Text
-              style={[
-                styles.infoValue,
-                {
-                  color:
-                    c.foreground,
-                },
-              ]}
-            >
-              {typeLabel}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.divider,
-              {
-                backgroundColor:
-                  c.border,
-              },
-            ]}
-          />
-
-          {/* =================================================
-              الإجراءات
-          ================================================= */}
-
-          <View
-            style={
-              styles.infoRow
-            }
-          >
-            <Text
-              style={[
-                styles.infoLabel,
-                {
-                  color:
-                    c.mutedForeground,
-                },
-              ]}
-            >
-              الإجراءات
-            </Text>
-
-            <Text
-              style={[
-                styles.infoValue,
-                {
-                  color:
-                    c.foreground,
-                },
-              ]}
-            >
-              {actions ||
-                procedure ||
-                'لم يتم إدخال إجراءات'}
-            </Text>
-          </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 15, paddingBottom: insets.bottom + 35 }}>
+        <View style={[styles.infoCard, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Info label="المدرسة" value={schoolName} c={c} />
+          <Info label="نوع الزيارة" value={visitType} c={c} />
         </View>
 
-        {/* =================================================
-            ACTIONS
-        ================================================= */}
+        <View style={[styles.notice, { backgroundColor: c.secondary }]}>
+          <Feather name="info" size={19} color={c.primary} />
+          <Text style={[styles.noticeText, { color: c.secondaryForeground }]}>لا حاجة لإعادة كتابة ما سجله المشرف في سجل المدرسة. التقط صورة الصفحة، وسيتولى المساعد قراءتها وربطها بالزيارات السابقة لهذه المدرسة.</Text>
+        </View>
 
-        <Section
-          title="الإجراءات أو التوصيات"
-          icon="edit-3"
-          c={c}
-        >
-          <TextInput
-            value={actions}
-            onChangeText={
-              setActions
-            }
-            multiline
-            textAlign="right"
-            textAlignVertical="top"
-            placeholder="اكتب الإجراءات أو التوصيات المطلوبة..."
-            placeholderTextColor={
-              c.mutedForeground
-            }
-            style={[
-              styles.input,
-              {
-                backgroundColor:
-                  c.card,
-
-                borderColor:
-                  c.border,
-
-                color:
-                  c.foreground,
-              },
-            ]}
-          />
-        </Section>
-
-        {/* =================================================
-            SMART AI BUTTON
-        ================================================= */}
-
-        <Pressable
-          onPress={
-            prepareAI
-          }
-          disabled={loading}
-          style={[
-            styles.smartButton,
-            {
-              backgroundColor:
-                c.navy,
-
-              opacity:
-                loading ? 0.75 : 1,
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.smartIcon,
-              {
-                backgroundColor:
-                  c.accent,
-              },
-            ]}
-          >
-            {loading ? (
-              <ActivityIndicator
-                size="small"
-                color={c.navy}
-              />
-            ) : (
-              <Feather
-                name="zap"
-                size={21}
-                color={c.navy}
-              />
-            )}
+        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[styles.sectionTitle, { color: c.foreground }]}>صورة سجل الزيارة</Text>
+          <Text style={[styles.helper, { color: c.mutedForeground }]}>يفضل تصوير الصفحة كاملة وبوضوح حتى يتمكن المساعد من قراءة الكتابة والمحتوى.</Text>
+          <View style={styles.actions}>
+            <Pressable onPress={takePhoto} style={[styles.actionButton, { backgroundColor: c.primary }]}>
+              <Feather name="camera" size={20} color={c.primaryForeground} />
+              <Text style={[styles.actionText, { color: c.primaryForeground }]}>تصوير السجل</Text>
+            </Pressable>
+            <Pressable onPress={choosePhoto} style={[styles.actionButton, { backgroundColor: c.secondary, borderColor: c.border, borderWidth: 1 }]}>
+              <Feather name="image" size={20} color={c.primary} />
+              <Text style={[styles.actionText, { color: c.foreground }]}>اختيار صورة</Text>
+            </Pressable>
           </View>
+          {photoUri ? <View style={styles.previewWrap}><Image source={{ uri: photoUri }} style={styles.preview} resizeMode="contain" /><Pressable onPress={() => setPhotoUri('')} style={styles.remove}><Feather name="x" size={17} color="#FFF" /></Pressable></View> : <View style={[styles.emptyPhoto, { borderColor: c.border, backgroundColor: c.background }]}><Feather name="file-text" size={34} color={c.mutedForeground} /><Text style={[styles.emptyText, { color: c.mutedForeground }]}>لم يتم اختيار صورة بعد</Text></View>}
+        </View>
 
-          <View
-            style={{
-              flex: 1,
-            }}
-          >
-            <Text
-              style={
-                styles.smartTitle
-              }
-            >
-              {loading
-                ? 'جاري إعداد الصياغة...'
-                : 'إعداد الصياغة الذكية'}
-            </Text>
-
-            <Text
-              style={
-                styles.smartSub
-              }
-            >
-              صياغة الزيارة اعتمادًا على نوع الزيارة والإجراءات
-            </Text>
+        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+          <View style={styles.sectionRow}>
+            <Text style={[styles.sectionTitle, { color: c.foreground }]}>الزيارات السابقة للمدرسة</Text>
+            <Text style={[styles.count, { color: c.mutedForeground }]}>{previousVisits.length}</Text>
           </View>
+          {previousVisits.length === 0 ? <Text style={[styles.helper, { color: c.mutedForeground }]}>لا توجد زيارات سابقة محفوظة لهذه المدرسة.</Text> : previousVisits.slice(0, 5).map(v => <View key={v.id} style={[styles.historyItem, { borderTopColor: c.border }]}><View style={[styles.date, { backgroundColor: c.secondary }]}><Text style={[styles.dateText, { color: c.primary }]}>{v.date.slice(-2)}</Text></View><View style={{ flex: 1 }}><Text style={[styles.historyType, { color: c.primary }]}>{v.type}</Text><Text style={[styles.historyText, { color: c.foreground }]} numberOfLines={3}>{v.actions || 'لا توجد إجراءات محفوظة'}</Text>{v.recommendations ? <Text style={[styles.historySub, { color: c.mutedForeground }]} numberOfLines={2}>التوصيات: {v.recommendations}</Text> : null}</View></View>)}
+        </View>
 
-          <Feather
-            name="chevron-left"
-            size={19}
-            color="#FFFFFF"
-          />
+        {message ? <View style={[styles.message, { backgroundColor: c.secondary }]}><Feather name="info" size={17} color={c.primary} /><Text style={[styles.messageText, { color: c.foreground }]}>{message}</Text></View> : null}
+
+        <Pressable onPress={continueToAnalysis} disabled={loading} style={[styles.analyze, { backgroundColor: c.navy, opacity: loading ? 0.7 : 1 }]}>
+          {loading ? <ActivityIndicator color="#FFF" /> : <Feather name="zap" size={20} color={c.accent} />}
+          <Text style={styles.analyzeText}>{loading ? 'جاري التجهيز...' : 'قراءة السجل وإعداد المسودة'}</Text>
         </Pressable>
-
-        {/* =================================================
-            NOTES
-        ================================================= */}
-
-        <Section
-          title="الملاحظات المقترحة"
-          icon="edit-3"
-          c={c}
-        >
-          <TextInput
-            value={notes}
-            onChangeText={
-              setNotes
-            }
-            multiline
-            textAlign="right"
-            textAlignVertical="top"
-            style={[
-              styles.input,
-              styles.largeInput,
-              {
-                backgroundColor:
-                  c.card,
-
-                borderColor:
-                  c.border,
-
-                color:
-                  c.foreground,
-              },
-            ]}
-          />
-        </Section>
-
-        {/* =================================================
-            RECOMMENDATIONS
-        ================================================= */}
-
-        <Section
-          title="التوصيات والإجراءات المقترحة"
-          icon="edit-3"
-          c={c}
-        >
-          <TextInput
-            value={
-              recommendations
-            }
-            onChangeText={
-              setRecommendations
-            }
-            multiline
-            textAlign="right"
-            textAlignVertical="top"
-            style={[
-              styles.input,
-              styles.xLargeInput,
-              {
-                backgroundColor:
-                  c.card,
-
-                borderColor:
-                  c.border,
-
-                color:
-                  c.foreground,
-              },
-            ]}
-          />
-        </Section>
-
-        {/* =================================================
-            FOLLOW UP
-        ================================================= */}
-
-        <Section
-          title="خطة المتابعة"
-          icon="edit-3"
-          c={c}
-        >
-          <TextInput
-            value={followUp}
-            onChangeText={
-              setFollowUp
-            }
-            multiline
-            textAlign="right"
-            textAlignVertical="top"
-            style={[
-              styles.input,
-              styles.largeInput,
-              {
-                backgroundColor:
-                  c.card,
-
-                borderColor:
-                  c.border,
-
-                color:
-                  c.foreground,
-              },
-            ]}
-          />
-        </Section>
-
-        {/* =================================================
-            USE DRAFT
-        ================================================= */}
-
-        <Pressable
-          onPress={
-            useDraft
-          }
-          style={[
-            styles.useButton,
-            {
-              backgroundColor:
-                c.primary,
-            },
-          ]}
-        >
-          <Feather
-            name="check-circle"
-            size={20}
-            color={
-              c.primaryForeground
-            }
-          />
-
-          <Text
-            style={[
-              styles.useButtonText,
-              {
-                color:
-                  c.primaryForeground,
-              },
-            ]}
-          >
-            استخدام الصياغة في الزيارة
-          </Text>
-        </Pressable>
-
-        <Text
-          style={[
-            styles.footer,
-            {
-              color:
-                c.mutedForeground,
-            },
-          ]}
-        >
-          يمكنك تعديل النص المقترح قبل حفظ الزيارة.
-        </Text>
       </ScrollView>
     </View>
   );
 }
 
-/* =========================================================
-   SECTION COMPONENT
-========================================================= */
+function Info({ label, value, c }: any) { return <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: c.mutedForeground }]}>{label}</Text><Text style={[styles.infoValue, { color: c.foreground }]}>{value}</Text></View>; }
 
-function Section({
-  title,
-  icon,
-  children,
-  c,
-}: any) {
-  return (
-    <View
-      style={
-        styles.section
-      }
-    >
-      <View
-        style={
-          styles.sectionHeader
-        }
-      >
-        <Text
-          style={[
-            styles.sectionTitle,
-            {
-              color:
-                c.foreground,
-            },
-          ]}
-        >
-          {title}
-        </Text>
-
-        <Feather
-          name={icon}
-          size={17}
-          color={c.primary}
-        />
-      </View>
-
-      {children}
-    </View>
-  );
-}
-
-/* =========================================================
-   STYLES
-========================================================= */
-
-const styles =
-  StyleSheet.create({
-    page: {
-      flex: 1,
-    },
-
-    /* =====================================================
-       HEADER
-    ===================================================== */
-
-    header: {
-      minHeight: 62,
-      paddingHorizontal: 16,
-      paddingBottom: 10,
-      flexDirection:
-        'row-reverse',
-      alignItems:
-        'center',
-      borderBottomWidth: 1,
-    },
-
-    headerText: {
-      flex: 1,
-      alignItems:
-        'flex-end',
-    },
-
-    title: {
-      fontFamily:
-        'Inter_700Bold',
-      fontSize: 20,
-    },
-
-    subtitle: {
-      fontFamily:
-        'Inter_400Regular',
-      fontSize: 10,
-      marginTop: 3,
-    },
-
-    backButton: {
-      width: 38,
-      height: 38,
-      alignItems:
-        'center',
-      justifyContent:
-        'center',
-    },
-
-    aiIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
-      alignItems:
-        'center',
-      justifyContent:
-        'center',
-      marginLeft: 8,
-    },
-
-    /* =====================================================
-       CONTENT
-    ===================================================== */
-
-    content: {
-      paddingHorizontal: 15,
-      paddingTop: 16,
-    },
-
-    /* =====================================================
-       INFORMATION CARD
-    ===================================================== */
-
-    infoCard: {
-      borderWidth: 1,
-      borderRadius: 16,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      marginBottom: 18,
-    },
-
-    infoRow: {
-      paddingVertical: 5,
-      alignItems:
-        'flex-end',
-    },
-
-    infoLabel: {
-      fontFamily:
-        'Inter_400Regular',
-      fontSize: 10,
-      marginBottom: 4,
-    },
-
-    infoValue: {
-      fontFamily:
-        'Inter_600SemiBold',
-      fontSize: 12,
-      lineHeight: 21,
-      textAlign:
-        'right',
-    },
-
-    divider: {
-      height: 1,
-      width: '100%',
-    },
-
-    /* =====================================================
-       SECTION
-    ===================================================== */
-
-    section: {
-      marginBottom: 18,
-    },
-
-    sectionHeader: {
-      flexDirection:
-        'row-reverse',
-      alignItems:
-        'center',
-      gap: 7,
-      marginBottom: 8,
-    },
-
-    sectionTitle: {
-      fontFamily:
-        'Inter_600SemiBold',
-      fontSize: 12,
-    },
-
-    /* =====================================================
-       INPUT
-    ===================================================== */
-
-    input: {
-      minHeight: 90,
-      borderWidth: 1,
-      borderRadius: 15,
-      paddingHorizontal: 13,
-      paddingVertical: 12,
-      fontFamily:
-        'Inter_400Regular',
-      fontSize: 12,
-      lineHeight: 22,
-    },
-
-    largeInput: {
-      minHeight: 115,
-    },
-
-    xLargeInput: {
-      minHeight: 180,
-    },
-
-    /* =====================================================
-       SMART BUTTON
-    ===================================================== */
-
-    smartButton: {
-      minHeight: 70,
-      borderRadius: 18,
-      paddingHorizontal: 13,
-      flexDirection:
-        'row-reverse',
-      alignItems:
-        'center',
-      gap: 10,
-      marginBottom: 18,
-    },
-
-    smartIcon: {
-      width: 45,
-      height: 45,
-      borderRadius: 14,
-      alignItems:
-        'center',
-      justifyContent:
-        'center',
-    },
-
-    smartTitle: {
-      color: '#FFFFFF',
-      fontFamily:
-        'Inter_700Bold',
-      fontSize: 12,
-      textAlign:
-        'right',
-    },
-
-    smartSub: {
-      color: '#B7D9D4',
-      fontFamily:
-        'Inter_400Regular',
-      fontSize: 9,
-      textAlign:
-        'right',
-      marginTop: 3,
-    },
-
-    /* =====================================================
-       USE BUTTON
-    ===================================================== */
-
-    useButton: {
-      minHeight: 54,
-      borderRadius: 15,
-      flexDirection:
-        'row-reverse',
-      alignItems:
-        'center',
-      justifyContent:
-        'center',
-      gap: 8,
-      marginTop: 4,
-    },
-
-    useButtonText: {
-      fontFamily:
-        'Inter_700Bold',
-      fontSize: 13,
-    },
-
-    /* =====================================================
-       FOOTER
-    ===================================================== */
-
-    footer: {
-      textAlign:
-        'center',
-      fontFamily:
-        'Inter_400Regular',
-      fontSize: 9,
-      marginTop: 12,
-    },
-  });
+const styles = StyleSheet.create({
+  page: { flex: 1 },
+  header: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 14, borderBottomWidth: 1 },
+  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerText: { flex: 1, alignItems: 'flex-end' },
+  title: { fontFamily: 'Inter_700Bold', fontSize: 20, textAlign: 'right' },
+  subtitle: { fontFamily: 'Inter_400Regular', fontSize: 10, marginTop: 3, textAlign: 'right' },
+  iconBox: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  infoCard: { borderWidth: 1, borderRadius: 17, padding: 14, marginBottom: 12 },
+  infoRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 7, gap: 12 },
+  infoLabel: { fontFamily: 'Inter_500Medium', fontSize: 10 },
+  infoValue: { flex: 1, fontFamily: 'Inter_700Bold', fontSize: 12, textAlign: 'right' },
+  notice: { borderRadius: 15, padding: 13, flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 9, marginBottom: 12 },
+  noticeText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 11, lineHeight: 19, textAlign: 'right' },
+  card: { borderWidth: 1, borderRadius: 17, padding: 14, marginBottom: 12 },
+  sectionTitle: { fontFamily: 'Inter_700Bold', fontSize: 15, textAlign: 'right' },
+  helper: { fontFamily: 'Inter_400Regular', fontSize: 10, lineHeight: 18, textAlign: 'right', marginTop: 6 },
+  actions: { flexDirection: 'row-reverse', gap: 8, marginTop: 13 },
+  actionButton: { flex: 1, minHeight: 48, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 7 },
+  actionText: { fontFamily: 'Inter_700Bold', fontSize: 11 },
+  previewWrap: { marginTop: 13, height: 250, borderRadius: 14, overflow: 'hidden', position: 'relative' },
+  preview: { width: '100%', height: '100%' },
+  remove: { position: 'absolute', top: 8, left: 8, width: 34, height: 34, borderRadius: 17, backgroundColor: '#B42318', alignItems: 'center', justifyContent: 'center' },
+  emptyPhoto: { marginTop: 13, height: 170, borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  emptyText: { fontFamily: 'Inter_400Regular', fontSize: 10 },
+  sectionRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
+  count: { fontFamily: 'Inter_700Bold', fontSize: 12 },
+  historyItem: { flexDirection: 'row-reverse', gap: 10, paddingTop: 12, marginTop: 10, borderTopWidth: 1 },
+  date: { width: 42, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  dateText: { fontFamily: 'Inter_700Bold', fontSize: 16 },
+  historyType: { fontFamily: 'Inter_600SemiBold', fontSize: 10, textAlign: 'right' },
+  historyText: { fontFamily: 'Inter_500Medium', fontSize: 10, lineHeight: 17, textAlign: 'right', marginTop: 4 },
+  historySub: { fontFamily: 'Inter_400Regular', fontSize: 9, lineHeight: 15, textAlign: 'right', marginTop: 3 },
+  message: { borderRadius: 13, padding: 11, flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 7, marginBottom: 12 },
+  messageText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 10, lineHeight: 17, textAlign: 'right' },
+  analyze: { minHeight: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 9 },
+  analyzeText: { color: '#FFF', fontFamily: 'Inter_700Bold', fontSize: 13 },
+});
