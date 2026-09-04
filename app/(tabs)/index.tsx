@@ -45,7 +45,6 @@ export default function Home() {
       <View style={styles.top}>
         <View style={styles.topText}>
           <Text style={[styles.eyebrow, { color: c.primary }]}>نظام الإشراف التربوي</Text>
-          <Text style={[styles.greeting, { color: c.foreground }]}>صباح الخير، أستاذ ضرغام</Text>
         </View>
         <View style={[styles.avatar, { backgroundColor: c.secondary }]}>
           <Feather name="briefcase" size={23} color={c.primary} />
