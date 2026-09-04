@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { useStore, visitTypes } from '@/context/AppContext';
+import { useStore } from '@/context/AppContext';
 
 const asString = (v?: string | string[] | null) => Array.isArray(v) ? v[0] ?? '' : v?.toString() ?? '';
 
@@ -16,7 +16,9 @@ export default function VisitAI() {
   const params = useLocalSearchParams<{ visitId?: string; schoolId?: string; schoolName?: string; visitType?: string; type?: string }>();
   const schoolId = asString(params.schoolId);
   const schoolName = asString(params.schoolName) || 'المدرسة';
-  const visitType = asString(params.visitType || params.type) || visitTypes[0] || 'زيارة اختصاص';
+  const initialVisitType = asString(params.visitType || params.type);
+  const [visitType, setVisitType] = useState(initialVisitType);
+  const [briefActions, setBriefActions] = useState('');
   const [photoUri, setPhotoUri] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -46,11 +48,12 @@ export default function VisitAI() {
   };
 
   const continueToAnalysis = () => {
-    if (!photoUri) { setMessage('التقط صورة صفحة سجل الزيارة أولًا.'); return; }
+    if (!visitType.trim()) { setMessage('اكتب نوع الزيارة أولًا.'); return; }
+    if (!briefActions.trim() && !photoUri) { setMessage('اكتب عناوين مختصرة للإجراءات أو التقط صورة من السجل.'); return; }
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      setMessage('تم تجهيز الصورة. الخطوة التالية ستكون ربط القراءة الذكية بالصورة والزيارات السابقة.');
+      setMessage('تم تجهيز بيانات الزيارة. الخطوة التالية ستكون ربط القراءة الذكية بالصورة والبيانات المختصرة والزيارات السابقة.');
     }, 250);
   };
 
@@ -62,7 +65,7 @@ export default function VisitAI() {
         </Pressable>
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: c.foreground }]}>المساعد الذكي للزيارة</Text>
-          <Text style={[styles.subtitle, { color: c.mutedForeground }]}>قراءة سجل المدرسة وبناء مسودة الزيارة</Text>
+          <Text style={[styles.subtitle, { color: c.mutedForeground }]}>اكتب رؤوس الأقلام ودع المساعد يصيغ الزيارة</Text>
         </View>
         <View style={[styles.iconBox, { backgroundColor: c.secondary }]}>
           <Feather name="cpu" size={22} color={c.primary} />
@@ -71,18 +74,49 @@ export default function VisitAI() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 15, paddingBottom: insets.bottom + 35 }}>
         <View style={[styles.infoCard, { backgroundColor: c.card, borderColor: c.border }]}>
-          <Info label="المدرسة" value={schoolName} c={c} />
-          <Info label="نوع الزيارة" value={visitType} c={c} />
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: c.mutedForeground }]}>المدرسة</Text>
+            <Text style={[styles.infoValue, { color: c.foreground }]}>{schoolName}</Text>
+          </View>
         </View>
 
         <View style={[styles.notice, { backgroundColor: c.secondary }]}>
           <Feather name="info" size={19} color={c.primary} />
-          <Text style={[styles.noticeText, { color: c.secondaryForeground }]}>لا حاجة لإعادة كتابة ما سجله المشرف في سجل المدرسة. التقط صورة الصفحة، وسيتولى المساعد قراءتها وربطها بالزيارات السابقة لهذه المدرسة.</Text>
+          <Text style={[styles.noticeText, { color: c.secondaryForeground }]}>المشرف لا يحتاج إلى كتابة الزيارة كاملة. يكفي تحديد نوعها وكتابة رؤوس أقلام بسيطة، ثم يمكن تصوير سجل الزيارة للاستفادة منه مع الزيارات السابقة.</Text>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[styles.sectionTitle, { color: c.foreground }]}>نوع الزيارة</Text>
+          <Text style={[styles.helper, { color: c.mutedForeground }]}>اكتب نوع الزيارة كما يناسب عملك، ولا تقيّد بقائمة ثابتة.</Text>
+          <TextInput
+            value={visitType}
+            onChangeText={setVisitType}
+            placeholder="مثال: زيارة متابعة فنية"
+            placeholderTextColor={c.mutedForeground}
+            style={[styles.input, { color: c.foreground, borderColor: c.border, backgroundColor: c.background }]}
+            textAlign="right"
+            multiline
+          />
+        </View>
+
+        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[styles.sectionTitle, { color: c.foreground }]}>إجراءات / عناوين رئيسية مختصرة</Text>
+          <Text style={[styles.helper, { color: c.mutedForeground }]}>اكتب ما تريد أن يبني عليه المساعد، حتى لو كانت كلمات أو نقاطًا مختصرة فقط.</Text>
+          <TextInput
+            value={briefActions}
+            onChangeText={setBriefActions}
+            placeholder={'مثال:\nمتابعة تنفيذ الخطة\nالاطلاع على السجلات\nمتابعة أداء المدرس'}
+            placeholderTextColor={c.mutedForeground}
+            style={[styles.textArea, { color: c.foreground, borderColor: c.border, backgroundColor: c.background }]}
+            textAlign="right"
+            textAlignVertical="top"
+            multiline
+          />
         </View>
 
         <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
           <Text style={[styles.sectionTitle, { color: c.foreground }]}>صورة سجل الزيارة</Text>
-          <Text style={[styles.helper, { color: c.mutedForeground }]}>يفضل تصوير الصفحة كاملة وبوضوح حتى يتمكن المساعد من قراءة الكتابة والمحتوى.</Text>
+          <Text style={[styles.helper, { color: c.mutedForeground }]}>إذا كانت لديك صورة من السجل، التقط الصفحة أو اخترها. سيستخدمها المساعد كمصدر إضافي للتفاصيل الفعلية.</Text>
           <View style={styles.actions}>
             <Pressable onPress={takePhoto} style={[styles.actionButton, { backgroundColor: c.primary }]}>
               <Feather name="camera" size={20} color={c.primaryForeground} />
@@ -115,8 +149,6 @@ export default function VisitAI() {
   );
 }
 
-function Info({ label, value, c }: any) { return <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: c.mutedForeground }]}>{label}</Text><Text style={[styles.infoValue, { color: c.foreground }]}>{value}</Text></View>; }
-
 const styles = StyleSheet.create({
   page: { flex: 1 },
   header: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 14, borderBottomWidth: 1 },
@@ -134,6 +166,8 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 17, padding: 14, marginBottom: 12 },
   sectionTitle: { fontFamily: 'Inter_700Bold', fontSize: 15, textAlign: 'right' },
   helper: { fontFamily: 'Inter_400Regular', fontSize: 10, lineHeight: 18, textAlign: 'right', marginTop: 6 },
+  input: { minHeight: 48, borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10, marginTop: 12, fontFamily: 'Inter_500Medium', fontSize: 12 },
+  textArea: { minHeight: 115, borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 12, marginTop: 12, fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 21 },
   actions: { flexDirection: 'row-reverse', gap: 8, marginTop: 13 },
   actionButton: { flex: 1, minHeight: 48, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 7 },
   actionText: { fontFamily: 'Inter_700Bold', fontSize: 11 },
