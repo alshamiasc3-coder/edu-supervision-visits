@@ -2,40 +2,11 @@ import React from 'react';
 import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
-import { isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Tabs } from 'expo-router';
-import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
-import { SymbolView } from 'expo-symbols';
 
 import { useColors } from '@/hooks/useColors';
 
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: 'house', selected: 'house.fill' }} />
-        <Label>الرئيسية</Label>
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="schools">
-        <Icon sf={{ default: 'building.2', selected: 'building.2.fill' }} />
-        <Label>المدارس</Label>
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="visits">
-        <Icon sf={{ default: 'camera', selected: 'camera.fill' }} />
-        <Label>الزيارات</Label>
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="tasks">
-        <Icon sf={{ default: 'checklist', selected: 'checklist' }} />
-        <Label>الأعمال</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
-
-function ClassicTabLayout() {
+export default function TabLayout() {
   const c = useColors();
   const dark = useColorScheme() === 'dark';
   const ios = Platform.OS === 'ios';
@@ -75,15 +46,11 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: 'الرئيسية',
-          tabBarIcon: ({ color }) =>
-            ios ? (
-              <SymbolView name="house" tintColor={color} size={23} />
-            ) : (
-              <Feather name="home" size={21} color={color} />
-            ),
+          tabBarIcon: ({ color }) => (
+            <Feather name="home" size={21} color={color} />
+          ),
         }}
       />
-
       <Tabs.Screen
         name="schools"
         options={{
@@ -93,7 +60,6 @@ function ClassicTabLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="visits"
         options={{
@@ -103,7 +69,6 @@ function ClassicTabLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
         name="tasks"
         options={{
@@ -115,8 +80,4 @@ function ClassicTabLayout() {
       />
     </Tabs>
   );
-}
-
-export default function TabLayout() {
-  return isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />;
 }
