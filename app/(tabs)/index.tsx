@@ -18,13 +18,24 @@ export default function Home() {
   }, []);
 
   const monthVisits = useMemo(() => visits.filter((visit) => {
-    const date = new Date(visit.date);
-    if (Number.isNaN(date.getTime())) return false;
-    return date.getFullYear() === currentMonth.year && date.getMonth() + 1 === currentMonth.month;
+    const parts = String(visit.date || '').split('-');
+    if (parts.length < 2) return false;
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    return year === currentMonth.year && month === currentMonth.month;
   }), [visits, currentMonth]);
 
-  const completed = monthVisits.filter((visit) => visit.status === 'completed').length;
-  const planned = monthVisits.filter((visit) => visit.status === 'planned').length;
+  const monthPlannedTasks = useMemo(() => tasks.filter((task) => {
+    const parts = String(task.date || '').split('-');
+    if (parts.length < 2) return false;
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    if (year !== currentMonth.year || month !== currentMonth.month) return false;
+    return task.planStatus === 'planned' || task.planStatus === 'in_progress';
+  }), [tasks, currentMonth]);
+
+  const visitCount = monthVisits.length;
+  const planned = monthPlannedTasks.length;
 
   const todayTasks = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -64,7 +75,7 @@ export default function Home() {
 
       <View style={styles.metrics}>
         <Metric icon="home" label="المدارس" value={schools.length} c={c} onPress={() => router.push('/(tabs)/schools')} />
-        <Metric icon="check-circle" label="زيارات الشهر" value={completed} c={c} onPress={() => router.push('/(tabs)/visits')} />
+        <Metric icon="check-circle" label="زيارات الشهر" value={visitCount} c={c} onPress={() => router.push('/(tabs)/visits')} />
         <Metric icon="clock" label="مخططة" value={planned} c={c} onPress={() => router.push('/monthly-plan')} />
       </View>
 
@@ -139,10 +150,11 @@ export default function Home() {
 }
 
 function getArabicMonth(dateString: string) {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return '';
+  const parts = String(dateString || '').split('-');
+  const month = Number(parts[1]);
+  if (!month || month < 1 || month > 12) return '';
   const months = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
-  return months[date.getMonth()];
+  return months[month - 1];
 }
 
 function Metric({ icon, label, value, c, onPress }: any) {
