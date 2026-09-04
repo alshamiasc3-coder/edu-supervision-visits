@@ -131,7 +131,7 @@ export default function VisitForm() {
     setMessage(''); setMessageType('');
     if (!schoolId) { setMessage('يرجى اختيار المدرسة أولًا.'); setMessageType('error'); return; }
     if (!date.trim()) { setMessage('يرجى إدخال تاريخ الزيارة.'); setMessageType('error'); return; }
-    if (!type.trim()) { setMessage('يرجى استخدام المساعد الذكي لإعداد نوع الزيارة والمسودة أولًا.'); setMessageType('error'); return; }
+    if (!type.trim()) { setMessage('يرجى إدخال نوع الزيارة.'); setMessageType('error'); return; }
     if (!actions.trim()) { setMessage('يرجى إنشاء مسودة الزيارة واعتمادها قبل الحفظ.'); setMessageType('error'); return; }
     try {
       setSaving(true);
@@ -158,9 +158,13 @@ export default function VisitForm() {
         <Text style={[styles.label, { color: c.foreground }]}>المدرسة</Text>
         <View style={styles.wrap}>{schools.map(s => <Pressable key={s.id} onPress={() => { setSchoolId(s.id); clearError(); }} style={[styles.chip, { backgroundColor: schoolId === s.id ? c.primary : c.card, borderColor: schoolId === s.id ? c.primary : c.border }]}><Text style={{ color: schoolId === s.id ? c.primaryForeground : c.foreground, fontFamily: 'Inter_500Medium', fontSize: 11 }}>{s.name}</Text></Pressable>)}</View>
         {selectedSchool ? <Text style={[styles.selected, { color: c.mutedForeground }]}>المدرسة المحددة: {selectedSchool.name}</Text> : null}
+
+        <Text style={[styles.label, { color: c.foreground }]}>نوع الزيارة</Text>
+        <TextInput value={type} onChangeText={setType} placeholder="اكتب نوع الزيارة..." placeholderTextColor={c.mutedForeground} textAlign="right" style={[styles.input, { backgroundColor: c.card, borderColor: c.border, color: c.foreground }]} />
+
         <Text style={[styles.label, { color: c.foreground }]}>تاريخ الزيارة</Text>
         <TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor={c.mutedForeground} textAlign="right" style={[styles.input, { backgroundColor: c.card, borderColor: c.border, color: c.foreground }]} />
-        {type ? <View style={[styles.typeCard, { backgroundColor: c.secondary, borderColor: c.border }]}><Text style={[styles.smallLabel, { color: c.mutedForeground }]}>نوع الزيارة</Text><Text style={[styles.typeValue, { color: c.foreground }]}>{type}</Text><Text style={[styles.typeHint, { color: c.mutedForeground }]}>تم تحديده وإعداده من خلال المساعد الذكي.</Text></View> : null}
+
         <View style={[styles.aiCard, { backgroundColor: c.navy }]}><View style={[styles.aiIcon, { backgroundColor: c.accent }]}><Feather name="cpu" size={21} color={c.navy} /></View><View style={{ flex: 1 }}><Text style={styles.aiTitle}>المساعد الذكي للزيارة</Text><Text style={styles.aiSub}>أنشئ المسودة أولًا، ثم ستُنقل الإجراءات والتوصيات والمتابعة إلى هذه الصفحة بعد اعتمادها.</Text></View><Pressable onPress={openAI} style={[styles.aiButton, { backgroundColor: c.primary }]}><Text style={[styles.aiButtonText, { color: c.primaryForeground }]}>فتح المساعد</Text></Pressable></View>
         {outputField('الإجراءات المتخذة فعليًا', actions, 'سيتم تعبئتها من المسودة المعتمدة في المساعد.')}
         {outputField('التوصيات', recommendations, 'سيتم تعبئتها من المسودة المعتمدة في المساعد.')}
