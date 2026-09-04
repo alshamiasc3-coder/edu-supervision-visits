@@ -34,7 +34,7 @@ export default function Home() {
     return task.planStatus === 'planned' || task.planStatus === 'in_progress';
   }), [tasks, currentMonth]);
 
-  const visitCount = monthVisits.length;
+  const visitCount = visits.length;
   const planned = monthPlannedTasks.length;
 
   const todayTasks = useMemo(() => {
