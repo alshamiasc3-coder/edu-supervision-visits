@@ -16,9 +16,9 @@ export default function Legislation() {
   const c = useColors();
   const insets = useSafeAreaInsets();
 
-  const openLocalVocationalPdf = async () => {
+  const openLocalPdf = async (fileName: string, label: string) => {
     try {
-      const asset = Asset.fromModule(require('../assets/legislation/نظام_التعليم_المهني_رقم_6_لسنة_2016.pdf'));
+      const asset = Asset.fromModule(require(`../assets/legislation/${fileName}`));
       await asset.downloadAsync();
       const uri = asset.localUri || asset.uri;
 
@@ -34,10 +34,13 @@ export default function Legislation() {
 
       await Linking.openURL(uri);
     } catch (error) {
-      console.error('تعذر فتح نظام التعليم المهني PDF', error);
-      Alert.alert('تعذر فتح الملف', 'تأكد من وجود ملف نظام التعليم المهني داخل مجلد assets/legislation.');
+      console.error(`تعذر فتح ${label} PDF`, error);
+      Alert.alert('تعذر فتح الملف', `تأكد من وجود ملف ${label} داخل مجلد assets/legislation.`);
     }
   };
+
+  const openLocalVocationalPdf = () => openLocalPdf('نظام_التعليم_المهني_رقم_6_لسنة_2016.pdf', 'نظام التعليم المهني');
+  const openLocalSecondaryPdf = () => openLocalPdf('نظام_المدارس_الثانوية_رقم_2_لسنة_1977_المعدل_من_الموسوعة.pdf', 'نظام المدارس الثانوية');
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>
@@ -63,7 +66,7 @@ export default function Legislation() {
         <SectionTitle c={c} title="المراجع الأكثر ارتباطًا بالعمل الإشرافي" />
 
         <LegislationCard c={c} category="نظام" title="نظام التعليم المهني رقم (6) لسنة 2016" meta={[['الرقم', '6'], ['السنة', '2016'], ['الوقائع العراقية', '4427'], ['تاريخ النشر', '12/12/2016']]} source="وزارة العدل – الوقائع العراقية" onPress={openLocalVocationalPdf} pdfLabel="فتح النص المحلي PDF" />
-        <LegislationCard c={c} category="نظام" title="نظام المدارس الثانوية رقم (2) لسنة 1977 المعدل" meta={[['الرقم', '2'], ['السنة', '1977'], ['الحالة', 'معدل'], ['الموضوع', 'المدارس الثانوية']]} source="وزارة التربية والوقائع العراقية" />
+        <LegislationCard c={c} category="نظام" title="نظام المدارس الثانوية رقم (2) لسنة 1977 المعدل" meta={[['الرقم', '2'], ['السنة', '1977'], ['الحالة', 'معدل'], ['الموضوع', 'المدارس الثانوية']]} source="الموسوعة الإدارية المعتمدة" onPress={openLocalSecondaryPdf} pdfLabel="فتح النص المحلي PDF" />
         <LegislationCard c={c} category="نظام" title="نظام الامتحانات العامة رقم (18) لسنة 1987" meta={[['الرقم', '18'], ['السنة', '1987'], ['الموضوع', 'الامتحانات العامة'], ['الجهة', 'وزارة التربية']]} source="وزارة التربية – الوقائع العراقية" />
 
         <Pressable onPress={() => router.push('/exam-instructions-1983')} style={[styles.instructionsButton, { backgroundColor: c.secondary, borderColor: c.border }]}>
@@ -139,7 +142,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontFamily: 'Inter_700Bold', fontSize: 14, marginTop: 4, textAlign: 'right', lineHeight: 21 },
   metaGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   meta: { width: '48%', borderWidth: 1, borderRadius: 12, padding: 9 },
-  metaLabel: { fontFamily: 'Inter_400Regular', fontSize: 9, textAlign: 'right' },
+  metaLabel: { fontFamily: 'Inter_400Regular', fontSize: 9 },
   metaValue: { fontFamily: 'Inter_700Bold', fontSize: 10, marginTop: 3, textAlign: 'right' },
   sourceLabel: { fontFamily: 'Inter_500Medium', fontSize: 10, textAlign: 'right', marginTop: 13 },
   sourceText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, textAlign: 'right', marginTop: 4, lineHeight: 18 },
