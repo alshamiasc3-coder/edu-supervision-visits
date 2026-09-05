@@ -38,7 +38,6 @@ export default function Legislation() {
 
         <LegislationCard c={c} category="نظام" title="نظام التعليم المهني رقم (6) لسنة 2016" meta={[['الرقم', '6'], ['السنة', '2016'], ['الوقائع العراقية', '4427'], ['تاريخ النشر', '12/12/2016']]} source="وزارة العدل – الوقائع العراقية" />
         <LegislationCard c={c} category="نظام" title="نظام المدارس الثانوية رقم (2) لسنة 1977 المعدل" meta={[['الرقم', '2'], ['السنة', '1977'], ['الحالة', 'معدل'], ['الموضوع', 'المدارس الثانوية']]} source="وزارة التربية والوقائع العراقية" />
-        <LegislationCard c={c} category="تعليمات امتحانية" title="تعليمات رقم (1) لسنة 1983 بشأن امتحانات نصف السنة والامتحانات النهائية" meta={[['الرقم', '1'], ['السنة', '1983'], ['الموضوع', 'الامتحانات المدرسية'], ['الارتباط', 'نظام المدارس الثانوية']]} source="وزارة التربية – الأنظمة والتعليمات الامتحانية" />
         <LegislationCard c={c} category="نظام" title="نظام الامتحانات العامة رقم (18) لسنة 1987" meta={[['الرقم', '18'], ['السنة', '1987'], ['الموضوع', 'الامتحانات العامة'], ['الجهة', 'وزارة التربية']]} source="وزارة التربية – الوقائع العراقية" />
 
         <Pressable onPress={() => router.push('/exam-instructions-1983')} style={[styles.instructionsButton, { backgroundColor: c.secondary, borderColor: c.border }]}>
@@ -117,7 +116,7 @@ const styles = StyleSheet.create({
   metaLabel: { fontFamily: 'Inter_400Regular', fontSize: 9, textAlign: 'right' },
   metaValue: { fontFamily: 'Inter_700Bold', fontSize: 10, marginTop: 3, textAlign: 'right' },
   sourceLabel: { fontFamily: 'Inter_500Medium', fontSize: 10, textAlign: 'right', marginTop: 13 },
-  sourceText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, textAlign: 'right', marginTop: 4, lineHeight: 18 },
+  sourceText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, textAlign: 'right', marginTop: 4, lineHeight: 18, textAlign: 'right' },
   button: { minHeight: 46, borderRadius: 13, marginTop: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 8 },
   buttonText: { fontFamily: 'Inter_700Bold', fontSize: 12 },
   instructionsButton: { minHeight: 74, borderRadius: 17, borderWidth: 1, marginBottom: 12, padding: 11, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
