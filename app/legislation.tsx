@@ -11,14 +11,16 @@ import { useColors } from '@/hooks/useColors';
 const OFFICIAL_PAGE = 'https://moj.gov.iq/view.8184/';
 const OFFICIAL_HOLIDAYS_PDF = 'https://moj.gov.iq/upload/pdf/4777_453.pdf';
 const DISCIPLINE_PDF = 'https://moj.gov.iq/upload/pdf/%D9%82%D8%A7%D9%86%D9%88%D9%86%20%D8%A5%D9%86%D8%B6%D8%A8%D8%A7%D8%B7%20%D9%85%D9%88%D8%B8%D9%81%D9%8A%20%D8%A7%D9%84%D8%AF%D9%88%D9%84%D8%A9.pdf';
+const VOCATIONAL_PDF = require('../assets/legislation/نظام_التعليم_المهني_رقم_6_لسنة_2016.pdf');
+const SECONDARY_PDF = require('../assets/legislation/نظام_المدارس_الثانوية_رقم_2_لسنة_1977_المعدل_من_الموسوعة.pdf');
 
 export default function Legislation() {
   const c = useColors();
   const insets = useSafeAreaInsets();
 
-  const openLocalPdf = async (fileName: string, label: string) => {
+  const openLocalPdf = async (moduleRef: number, label: string) => {
     try {
-      const asset = Asset.fromModule(require(`../assets/legislation/${fileName}`));
+      const asset = Asset.fromModule(moduleRef);
       await asset.downloadAsync();
       const uri = asset.localUri || asset.uri;
 
@@ -39,8 +41,8 @@ export default function Legislation() {
     }
   };
 
-  const openLocalVocationalPdf = () => openLocalPdf('نظام_التعليم_المهني_رقم_6_لسنة_2016.pdf', 'نظام التعليم المهني');
-  const openLocalSecondaryPdf = () => openLocalPdf('نظام_المدارس_الثانوية_رقم_2_لسنة_1977_المعدل_من_الموسوعة.pdf', 'نظام المدارس الثانوية');
+  const openLocalVocationalPdf = () => openLocalPdf(VOCATIONAL_PDF, 'نظام التعليم المهني');
+  const openLocalSecondaryPdf = () => openLocalPdf(SECONDARY_PDF, 'نظام المدارس الثانوية');
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>
