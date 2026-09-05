@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useStore } from '@/context/AppContext';
 
-const AI_URL = 'https://edu-supervision-ai-worker.alshamiasc3-coder.workers.dev';
+const AI_URL = 'https://edu-supervision-ai-worker.alshamiasc3.workers.dev';
 const asString = (v?: string | string[] | null) => Array.isArray(v) ? v[0] ?? '' : v?.toString() ?? '';
 type Options = { actionsOptions: string[]; recommendationsOptions: string[]; followUpOptions: string[] };
 
