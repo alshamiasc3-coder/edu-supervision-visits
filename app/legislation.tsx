@@ -7,7 +7,8 @@ import { useColors } from '@/hooks/useColors';
 
 const OFFICIAL_PAGE = 'https://moj.gov.iq/view.8184/';
 const OFFICIAL_HOLIDAYS_PDF = 'https://moj.gov.iq/upload/pdf/4777_453.pdf';
-const TEACHER_PROTECTION_PDF = 'https://mop.gov.iq/documents/legal_dept/informs/gazette/4661.pdf';
+const TEACHER_PROTECTION_PDF = 'https://moj.gov.iq/upload/pdf/4486.pdf';
+const TEACHER_PROTECTION_INSTRUCTIONS_PDF = 'https://moj.gov.iq/upload/pdf/4661.pdf';
 
 export default function Legislation() {
   const c = useColors();
@@ -34,31 +35,9 @@ export default function Legislation() {
           <Text style={[styles.noticeText, { color: c.secondaryForeground }]}>هذه الصفحة تعتمد على مصادر رسمية موثقة. لا يستخدم الذكاء الاصطناعي لإنشاء نصوص أو أرقام مواد قانونية، ولا تُعد مقترحات التعديل قوانين نافذة.</Text>
         </View>
 
-        <LegislationCard
-          c={c}
-          category="قانون"
-          title="قانون العطلات الرسمية"
-          number="12"
-          year="2024"
-          gazette="4777"
-          date="27/05/2024"
-          source="وزارة العدل – دائرة الوقائع العراقية"
-          pdf={OFFICIAL_HOLIDAYS_PDF}
-          pdfLabel="فتح العدد الرسمي PDF"
-        />
+        <LegislationCard c={c} category="قانون" title="قانون العطلات الرسمية" number="12" year="2024" gazette="4777" date="27/05/2024" source="وزارة العدل – دائرة الوقائع العراقية" pdf={OFFICIAL_HOLIDAYS_PDF} pdfLabel="فتح العدد الرسمي PDF" />
 
-        <LegislationCard
-          c={c}
-          category="قانون"
-          title="قانون حماية المعلمين والمدرسين والمشرفين والمرشدين التربويين"
-          number="8"
-          year="2018"
-          gazette="4486"
-          date="09/04/2018"
-          source="جريدة الوقائع العراقية"
-          pdf={TEACHER_PROTECTION_PDF}
-          pdfLabel="فتح النص الرسمي PDF"
-        />
+        <LegislationCard c={c} category="قانون" title="قانون حماية المعلمين والمدرسين والمشرفين والمرشدين التربويين" number="8" year="2018" gazette="4486" date="09/04/2018" source="وزارة العدل – جريدة الوقائع العراقية" pdf={TEACHER_PROTECTION_PDF} pdfLabel="فتح النص الرسمي PDF" />
 
         <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
           <View style={styles.cardTop}>
@@ -70,18 +49,15 @@ export default function Legislation() {
               <Text style={[styles.cardTitle, { color: c.foreground }]}>تعليمات تسهيل تنفيذ أحكام قانون حماية المعلمين والمدرسين والمشرفين والمرشدين التربويين</Text>
             </View>
           </View>
-
           <View style={styles.metaGrid}>
             <Meta label="الرقم" value="1" c={c} />
             <Meta label="السنة" value="2021" c={c} />
             <Meta label="المرجع" value="قانون رقم 8 لسنة 2018" c={c} />
             <Meta label="العدد" value="4661" c={c} />
           </View>
-
           <Text style={[styles.sourceLabel, { color: c.mutedForeground }]}>المصدر الرسمي</Text>
-          <Text style={[styles.sourceText, { color: c.foreground }]}>نص التعليمات المنشور ضمن الوقائع العراقية</Text>
-
-          <Pressable onPress={() => Linking.openURL(TEACHER_PROTECTION_PDF)} style={[styles.button, { backgroundColor: c.primary }]}>
+          <Text style={[styles.sourceText, { color: c.foreground }]}>وزارة العدل – الوقائع العراقية</Text>
+          <Pressable onPress={() => Linking.openURL(TEACHER_PROTECTION_INSTRUCTIONS_PDF)} style={[styles.button, { backgroundColor: c.primary }]}>
             <Feather name="file-text" size={18} color={c.primaryForeground} />
             <Text style={[styles.buttonText, { color: c.primaryForeground }]}>فتح النص الرسمي PDF</Text>
           </Pressable>
@@ -113,17 +89,14 @@ function LegislationCard({ c, category, title, number, year, gazette, date, sour
           <Text style={[styles.cardTitle, { color: c.foreground }]}>{title}</Text>
         </View>
       </View>
-
       <View style={styles.metaGrid}>
         <Meta label="الرقم" value={number} c={c} />
         <Meta label="السنة" value={year} c={c} />
         <Meta label="الوقائع العراقية" value={gazette} c={c} />
         <Meta label="تاريخ النشر" value={date} c={c} />
       </View>
-
       <Text style={[styles.sourceLabel, { color: c.mutedForeground }]}>المصدر الرسمي</Text>
       <Text style={[styles.sourceText, { color: c.foreground }]}>{source}</Text>
-
       <Pressable onPress={() => Linking.openURL(pdf)} style={[styles.button, { backgroundColor: c.primary }]}>
         <Feather name="file-text" size={18} color={c.primaryForeground} />
         <Text style={[styles.buttonText, { color: c.primaryForeground }]}>{pdfLabel}</Text>
@@ -133,12 +106,7 @@ function LegislationCard({ c, category, title, number, year, gazette, date, sour
 }
 
 function Meta({ label, value, c }: any) {
-  return (
-    <View style={[styles.meta, { backgroundColor: c.background, borderColor: c.border }]}>
-      <Text style={[styles.metaLabel, { color: c.mutedForeground }]}>{label}</Text>
-      <Text style={[styles.metaValue, { color: c.foreground }]}>{value}</Text>
-    </View>
-  );
+  return <View style={[styles.meta, { backgroundColor: c.background, borderColor: c.border }]}><Text style={[styles.metaLabel, { color: c.mutedForeground }]}>{label}</Text><Text style={[styles.metaValue, { color: c.foreground }]}>{value}</Text></View>;
 }
 
 const styles = StyleSheet.create({
