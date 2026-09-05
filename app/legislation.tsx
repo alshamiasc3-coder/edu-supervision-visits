@@ -1,6 +1,9 @@
 import React from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { Asset } from 'expo-asset';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -12,6 +15,29 @@ const DISCIPLINE_PDF = 'https://moj.gov.iq/upload/pdf/%D9%82%D8%A7%D9%86%D9%88%D
 export default function Legislation() {
   const c = useColors();
   const insets = useSafeAreaInsets();
+
+  const openLocalVocationalPdf = async () => {
+    try {
+      const asset = Asset.fromModule(require('../assets/legislation/نظام_التعليم_المهني_رقم_6_لسنة_2016.pdf'));
+      await asset.downloadAsync();
+      const uri = asset.localUri || asset.uri;
+
+      if (Platform.OS === 'android') {
+        const contentUri = uri.startsWith('content://') ? uri : await FileSystemLegacy.getContentUriAsync(uri);
+        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+          data: contentUri,
+          type: 'application/pdf',
+          flags: 1,
+        });
+        return;
+      }
+
+      await Linking.openURL(uri);
+    } catch (error) {
+      console.error('تعذر فتح نظام التعليم المهني PDF', error);
+      Alert.alert('تعذر فتح الملف', 'تأكد من وجود ملف نظام التعليم المهني داخل مجلد assets/legislation.');
+    }
+  };
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>
@@ -36,7 +62,7 @@ export default function Legislation() {
 
         <SectionTitle c={c} title="المراجع الأكثر ارتباطًا بالعمل الإشرافي" />
 
-        <LegislationCard c={c} category="نظام" title="نظام التعليم المهني رقم (6) لسنة 2016" meta={[['الرقم', '6'], ['السنة', '2016'], ['الوقائع العراقية', '4427'], ['تاريخ النشر', '12/12/2016']]} source="وزارة العدل – الوقائع العراقية" />
+        <LegislationCard c={c} category="نظام" title="نظام التعليم المهني رقم (6) لسنة 2016" meta={[['الرقم', '6'], ['السنة', '2016'], ['الوقائع العراقية', '4427'], ['تاريخ النشر', '12/12/2016']]} source="وزارة العدل – الوقائع العراقية" onPress={openLocalVocationalPdf} pdfLabel="فتح النص المحلي PDF" />
         <LegislationCard c={c} category="نظام" title="نظام المدارس الثانوية رقم (2) لسنة 1977 المعدل" meta={[['الرقم', '2'], ['السنة', '1977'], ['الحالة', 'معدل'], ['الموضوع', 'المدارس الثانوية']]} source="وزارة التربية والوقائع العراقية" />
         <LegislationCard c={c} category="نظام" title="نظام الامتحانات العامة رقم (18) لسنة 1987" meta={[['الرقم', '18'], ['السنة', '1987'], ['الموضوع', 'الامتحانات العامة'], ['الجهة', 'وزارة التربية']]} source="وزارة التربية – الوقائع العراقية" />
 
@@ -46,7 +72,7 @@ export default function Legislation() {
           </View>
           <View style={styles.instructionsTextBox}>
             <Text style={[styles.instructionsTitle, { color: c.foreground }]}>مجموعة التعليمات الامتحانية لسنة 1983</Text>
-            <Text style={[styles.instructionsSub, { color: c.mutedForeground }]}>التعليمات من 1 إلى 10 في نافذة مستقلة</Text>
+            <Text style={[styles.instructionsSub, { color: c.mutedForeground }]}>التعليمات من 1 إلى 24 في نافذة مستقلة</Text>
           </View>
           <Feather name="chevron-left" size={19} color={c.primary} />
         </Pressable>
@@ -74,7 +100,7 @@ function SectionTitle({ c, title }: any) {
   return <View style={styles.sectionTitleWrap}><Text style={[styles.sectionTitle, { color: c.foreground }]}>{title}</Text></View>;
 }
 
-function LegislationCard({ c, category, title, meta, source, pdf, pdfLabel }: any) {
+function LegislationCard({ c, category, title, meta, source, pdf, pdfLabel, onPress }: any) {
   return (
     <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
       <View style={styles.cardTop}>
@@ -84,7 +110,7 @@ function LegislationCard({ c, category, title, meta, source, pdf, pdfLabel }: an
       <View style={styles.metaGrid}>{meta.map(([label, value]: string[], index: number) => <Meta key={`${label}-${index}`} label={label} value={value} c={c} />)}</View>
       <Text style={[styles.sourceLabel, { color: c.mutedForeground }]}>المصدر</Text>
       <Text style={[styles.sourceText, { color: c.foreground }]}>{source}</Text>
-      {pdf ? <Pressable onPress={() => Linking.openURL(pdf)} style={[styles.button, { backgroundColor: c.primary }]}><Feather name="file-text" size={18} color={c.primaryForeground} /><Text style={[styles.buttonText, { color: c.primaryForeground }]}>{pdfLabel}</Text></Pressable> : null}
+      {onPress ? <Pressable onPress={onPress} style={[styles.button, { backgroundColor: c.primary }]}><Feather name="file-text" size={18} color={c.primaryForeground} /><Text style={[styles.buttonText, { color: c.primaryForeground }]}>{pdfLabel}</Text></Pressable> : pdf ? <Pressable onPress={() => Linking.openURL(pdf)} style={[styles.button, { backgroundColor: c.primary }]}><Feather name="file-text" size={18} color={c.primaryForeground} /><Text style={[styles.buttonText, { color: c.primaryForeground }]}>{pdfLabel}</Text></Pressable> : null}
     </View>
   );
 }
@@ -116,7 +142,7 @@ const styles = StyleSheet.create({
   metaLabel: { fontFamily: 'Inter_400Regular', fontSize: 9, textAlign: 'right' },
   metaValue: { fontFamily: 'Inter_700Bold', fontSize: 10, marginTop: 3, textAlign: 'right' },
   sourceLabel: { fontFamily: 'Inter_500Medium', fontSize: 10, textAlign: 'right', marginTop: 13 },
-  sourceText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, textAlign: 'right', marginTop: 4, lineHeight: 18, textAlign: 'right' },
+  sourceText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, textAlign: 'right', marginTop: 4, lineHeight: 18 },
   button: { minHeight: 46, borderRadius: 13, marginTop: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 8 },
   buttonText: { fontFamily: 'Inter_700Bold', fontSize: 12 },
   instructionsButton: { minHeight: 74, borderRadius: 17, borderWidth: 1, marginBottom: 12, padding: 11, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
