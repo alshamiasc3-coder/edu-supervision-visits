@@ -89,6 +89,7 @@ export default function Home() {
         <Quick icon="calendar" label="جدولة عمل" onPress={() => router.push('/task-form')} c={c} />
         <Quick icon="clipboard" label="الخطة الشهرية" onPress={() => router.push('/monthly-plan')} c={c} />
         <Quick icon="file-text" label="الكتب الوزارية" onPress={() => router.push('/ministry-books')} c={c} />
+        <Quick icon="book-open" label="التشريعات والقوانين" onPress={() => router.push('/legislation')} c={c} />
       </View>
 
       <View style={styles.sectionHead}>
