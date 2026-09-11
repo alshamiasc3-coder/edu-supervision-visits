@@ -349,7 +349,7 @@ export default function Visits() {
                             : c.primary,
                       fontFamily:
                         'Inter_600SemiBold',
-                      fontSize: 10,
+                      fontSize: 12,
                     }}
                   >
                     {
@@ -384,7 +384,7 @@ export default function Visits() {
                       color: c.primary,
                       fontFamily:
                         'Inter_600SemiBold',
-                      fontSize: 10,
+                      fontSize: 12,
                     }}
                   >
                     المساعد
@@ -488,13 +488,13 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: 'Inter_700Bold',
     textAlign: 'right',
   },
 
   subtitle: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
     textAlign: 'right',
     marginTop: 3,
@@ -528,13 +528,13 @@ const styles = StyleSheet.create({
   },
 
   statValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: 'Inter_700Bold',
     marginTop: 4,
   },
 
   statLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Inter_500Medium',
     marginTop: 2,
   },
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   },
 
   newVisitText: {
-    fontSize: 13,
+    fontSize: 15,
     fontFamily: 'Inter_700Bold',
   },
 
@@ -563,12 +563,12 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter_700Bold',
   },
 
   countText: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
   },
 
@@ -592,12 +592,12 @@ const styles = StyleSheet.create({
   },
 
   dateDay: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: 'Inter_700Bold',
   },
 
   dateMonth: {
-    fontSize: 9,
+    fontSize: 11,
     fontFamily: 'Inter_500Medium',
     marginTop: 2,
   },
@@ -608,20 +608,20 @@ const styles = StyleSheet.create({
   },
 
   schoolName: {
-    fontSize: 13,
+    fontSize: 15,
     fontFamily: 'Inter_700Bold',
     textAlign: 'right',
   },
 
   visitType: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Inter_600SemiBold',
     textAlign: 'right',
     marginTop: 4,
   },
 
   reason: {
-    fontSize: 10,
+    fontSize: 12,
     lineHeight: 17,
     fontFamily: 'Inter_400Regular',
     textAlign: 'right',
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
   },
 
   actions: {
-    fontSize: 9,
+    fontSize: 11,
     lineHeight: 16,
     fontFamily: 'Inter_400Regular',
     textAlign: 'right',
@@ -670,13 +670,13 @@ const styles = StyleSheet.create({
   },
 
   emptyTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Inter_700Bold',
     marginTop: 12,
   },
 
   emptyText: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
     marginTop: 5,
     textAlign: 'center',

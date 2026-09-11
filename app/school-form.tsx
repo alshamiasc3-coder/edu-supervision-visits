@@ -111,12 +111,12 @@ function Field({ label, value, onChangeText, placeholder, helper, c }: any) {
 const styles = StyleSheet.create({
   page: { flex: 1, paddingHorizontal: 18 },
   header: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 18 },
-  title: { fontFamily: 'Inter_700Bold', fontSize: 20 },
+  title: { fontFamily: 'Inter_700Bold', fontSize: 22 },
   formScroll: { flex: 1 },
-  intro: { fontFamily: 'Inter_400Regular', fontSize: 12, textAlign: 'right', lineHeight: 20, marginBottom: 18 },
+  intro: { fontFamily: 'Inter_400Regular', fontSize: 14, textAlign: 'right', lineHeight: 20, marginBottom: 18 },
   field: { marginBottom: 13 },
-  label: { fontFamily: 'Inter_600SemiBold', fontSize: 12, textAlign: 'right', marginBottom: 7 },
-  input: { borderWidth: 1, borderRadius: 13, minHeight: 48, paddingHorizontal: 13, fontFamily: 'Inter_400Regular', fontSize: 13 },
-  helper: { fontFamily: 'Inter_400Regular', fontSize: 10, textAlign: 'right', marginTop: 4 },
+  label: { fontFamily: 'Inter_600SemiBold', fontSize: 14, textAlign: 'right', marginBottom: 7 },
+  input: { borderWidth: 1, borderRadius: 13, minHeight: 48, paddingHorizontal: 13, fontFamily: 'Inter_400Regular', fontSize: 15 },
+  helper: { fontFamily: 'Inter_400Regular', fontSize: 12, textAlign: 'right', marginTop: 4 },
   save: { minHeight: 52, borderRadius: 15, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 8 },
 });

@@ -1,18 +1,9 @@
-const GEMINI_MODEL = 'gemini-3.5-flash-lite';
+﻿const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400' };
-const RAW_BASE = 'https://raw.githubusercontent.com/alshamiasc3-coder/edu-supervision-visits/photo-restoration/assets/legislation/';
-const LEGISLATION = {
-  exams1983: { title: 'تعليمات الامتحانات لسنة 1983', file: 'تعليمات_الامتحانات_لسنة_1983_من_الموسوعة_1_24.pdf', keywords: ['امتحان','امتحانات','اختبار','مراقبة','قاعة','دفتر','تصحيح','درجات','نتائج','لجنة'] },
-  exams1987: { title: 'نظام الامتحانات العامة رقم (18) لسنة 1987', file: 'نظام_الامتحانات_العامة_رقم_18_لسنة_1987_من_الموسوعة.pdf', keywords: ['امتحان','امتحانات','امتحان عام','شهادة','نتائج','درجات','لجنة'] },
-  secondary1977: { title: 'نظام المدارس الثانوية رقم (2) لسنة 1977 المعدل', file: 'نظام_المدارس_الثانوية_رقم_2_لسنة_1977_المعدل_من_الموسوعة.pdf', keywords: ['مدرسة ثانوية','دوام','طلبة','طلاب','حضور','غياب','مدير','هيئة تعليمية','سجل','انضباط'] },
-  vocational2016: { title: 'نظام التعليم المهني رقم (6) لسنة 2016', file: 'نظام_التعليم_المهني_رقم_6_لسنة_2016.pdf', keywords: ['مهني','مهني','تخصص مهني','ورش','تدريب مهني','التعليم المهني'] },
-  discipline1991: { title: 'قانون انضباط موظفي الدولة والقطاع العام رقم (14) لسنة 1991 المعدل', file: 'قانون_انضباط_موظفي_الدولة_رقم_14_لسنة_1991_المعدل_من_الموسوعة.pdf', keywords: ['موظف','انضباط','مخالفة','واجب','عقوبة','غياب موظف','مساءلة','دوام موظف'] },
-};
 function json(data, status = 200) { return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' } }); }
 function clean(v) { return v == null ? '' : String(v).trim(); }
 function arr(v) { return Array.isArray(v) ? v : []; }
-function normalize(v) { return clean(v).replace(/[ًٌٍَُِّْـ]/g, '').replace(/أ|إ|آ/g, 'ا').replace(/ى/g, 'ي').toLowerCase(); }
 
 async function gemini(parts, schema, env, max = 1800) {
   if (!env.GEMINI_API_KEY) return { ok: false, error: 'خدمة الذكاء الاصطناعي غير مهيأة على الخادم.' };
@@ -23,57 +14,107 @@ async function gemini(parts, schema, env, max = 1800) {
   if (!text) return { ok: false, error: 'عادت استجابة فارغة من خدمة الذكاء الاصطناعي.' };
   try { return { ok: true, result: JSON.parse(text) }; } catch (e) { console.error('Invalid Gemini JSON', e, text); return { ok: false, error: 'تعذر قراءة نتيجة الذكاء الاصطناعي.' }; }
 }
+
 function imagePart(dataUrl) {
-  const match = clean(dataUrl).match(/^data:([^;]+);base64,(.+)$/s); if (!match) return null;
+  const match = clean(dataUrl).match(/^data:([^;]+);base64,(.+)$/s);
+  if (!match) return null;
   return { inline_data: { mime_type: match[1], data: match[2] } };
 }
-function bytesToBase64(bytes) {
-  let binary = ''; const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunk, bytes.length)));
-  return btoa(binary);
+
+
+function normalizeLegalContext(value) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map(x => ({
+      legislationId: clean(x?.legislationId),
+      legislationTitle: clean(x?.legislationTitle),
+      article: clean(x?.article),
+      paragraph: clean(x?.paragraph),
+      page: clean(x?.page),
+      text: clean(x?.text),
+    }))
+    .filter(x => x.legislationTitle && x.text)
+    .slice(0, 6);
 }
-async function legislationPart(doc) {
-  const r = await fetch(RAW_BASE + encodeURIComponent(doc.file));
-  if (!r.ok) throw new Error(`تعذر تحميل المرجع التشريعي: ${doc.title}`);
-  const bytes = new Uint8Array(await r.arrayBuffer());
-  return { inline_data: { mime_type: 'application/pdf', data: bytesToBase64(bytes) } };
-}
-function chooseLegislation(body) {
-  const text = normalize([body?.visitType, body?.actions, body?.recommendations, body?.followUp].join(' '));
-  const scored = Object.values(LEGISLATION).map(doc => ({ doc, score: doc.keywords.reduce((n, k) => n + (text.includes(normalize(k)) ? 1 : 0), 0) })).sort((a,b) => b.score - a.score);
-  return scored[0]?.score ? scored[0].doc : null;
+
+function legalContextText(items) {
+  return items.map((x, i) => {
+    const article = x.article
+      ? ' — المادة ' + x.article
+      : '';
+
+    const paragraph = x.paragraph
+      ? ' — ' + x.paragraph
+      : '';
+
+    const page = x.page
+      ? ' — الصفحة ' + x.page
+      : '';
+
+    return (
+      (i + 1) +
+      '. ' +
+      x.legislationTitle +
+      article +
+      paragraph +
+      page +
+      '\nالنص المصدر: ' +
+      x.text
+    );
+  }).join('\n\n');
 }
 
 async function handleVisitDraftFromImage(request, env) {
   let body; try { body = await request.json(); } catch { return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400); }
-  const schoolName = clean(body?.schoolName), visitType = clean(body?.visitType), briefContext = clean(body?.briefContext), registerImage = clean(body?.registerImage);
+  const schoolName = clean(body?.schoolName), visitType = clean(body?.visitType), briefContext = clean(body?.briefContext);
+  const registerImage = clean(body?.registerImage);
   const previousVisits = arr(body?.previousVisits).slice(0, 8);
   if (!visitType) return json({ ok: false, error: 'نوع الزيارة مطلوب.' }, 400);
-  const image = imagePart(registerImage); if (!image) return json({ ok: false, error: 'صورة سجل الزيارة مطلوبة وبصيغة صورة صالحة.' }, 400);
-  const doc = chooseLegislation(body); let legalPart = null; try { if (doc) legalPart = await legislationPart(doc); } catch (e) { console.error(e); }
-  const legalInstruction = doc ? `يوجد أدناه المرجع المحلي الأصلي: ${doc.title}. استخدمه فقط للتحقق من السند التشريعي. لا تخمن رقم مادة أو فقرة أو صفحة. إذا لم تستطع إثباتها من الملف فأعد legalReferences فارغة.` : 'لا يوجد مرجع محلي محدد؛ لا تنشئ أي سند تشريعي.';
-  const prompt = `أنت مساعد مهني للمشرف التربوي في المدارس العراقية. لديك صورة لسجل زيارة ورقية، وسجل زيارات سابقة، ونوع الزيارة، ومرجع تشريعي محلي أصلي عند توفره.
+  const image = imagePart(registerImage);
+  if (!image) return json({ ok: false, error: 'صورة سجل الزيارة مطلوبة وبصيغة صورة صالحة.' }, 400);
 
-مهمتك إعداد مسودة قابلة للمراجعة في أربعة أقسام فقط: نوع الزيارة، الإجراءات المتخذة فعليًا، التوصيات، المتابعة.
+  const prompt = `أنت مساعد مهني للمشرف التربوي في المدارس العراقية. لديك صورة لسجل زيارة ورقية، وسجل زيارات سابقة لنفس المدرسة، ونوع الزيارة الذي حدده المشرف.
 
-قواعد صارمة: صورة السجل هي المصدر الأساسي للوقائع الحالية. لا تخترع إجراءات أو نتائج أو أسماء أو أرقامًا أو تواريخ. الزيارات السابقة للسياق والاستمرارية فقط. لا تستنتج شخصية أو نية أو حالة نفسية. لا تضف سببًا للزيارة أو ملاحظات مستقلة. التوصيات والمتابعة اقتراحات مهنية وليست وقائع. ${legalInstruction}
+مهمتك إعداد مسودة واحدة شاملة وقابلة للمراجعة قبل الاعتماد، في أربعة أقسام فقط:
+1) نوع الزيارة
+2) الإجراءات المتخذة فعليًا
+3) التوصيات
+4) المتابعة
 
-إذا كان المرجع يثبت صلة قانونية بالتوصيات، أعد بعد ذلك legalReferences: قائمة من 0 إلى 4 عناصر، وكل عنصر: recommendationIndex (رقم التوصية 1-4)، legislationTitle، article، paragraph، page، basis. article وparagraph وpage يجب أن تكون نصوصًا مستخرجة أو محددة بوضوح من الملف؛ إذا لم تكن متاحة اتركها فارغة. basis وصف قصير لما يدعم التوصية دون اختلاق نص قانوني.
+قواعد صارمة:
+- صورة سجل الزيارة هي المصدر الأساسي لتحديد ما تم فعليًا. اقرأ النص الظاهر فيها فقط، ولا تخترع إجراءات أو نتائج أو أسماء أو أرقامًا أو تواريخ غير مقروءة.
+- إذا كان جزء من الصورة غير واضح، لا تخمّن؛ استخدم عبارة مهنية تشير إلى عدم وضوح المعلومة أو اتركها دون اختلاق.
+- الزيارات السابقة لنفس المدرسة تستخدم لفهم الاستمرارية المهنية والمصطلحات وأسلوب الصياغة الظاهر في السجل فقط، وليس لاستنتاج شخصية أو نية أو حالة نفسية لأي شخص.
+- لا تنقل إجراءً من زيارة سابقة إلى الزيارة الحالية باعتباره حدثًا فعليًا إلا إذا كان ظاهرًا في الصورة الحالية.
+- الإجراءات المتخذة فعليًا يجب أن تصف ما يظهر في السجل الحالي فقط.
+- التوصيات والمتابعة يمكن صياغتهما مهنيًا استنادًا إلى السجل الحالي ونوع الزيارة والسياق السابق، لكن لا تقدمهما على أنهما وقائع حدثت فعلاً.
+- لا تضف سببًا للزيارة، ولا قسمًا للملاحظات أو المشاهدات، ولا نقاط قوة أو احتياجات، ولا اختصاصًا.
+- لا تستخدم لغة نفسية أو أحكامًا على الأشخاص.
+- لا تستشهد بمواد قانونية أو أرقام كتب أو تعليمات رسمية إلا إذا كانت ظاهرة بوضوح في الصورة أو البيانات المرسلة.
+- حافظ على اللغة العربية المهنية الإدارية المناسبة للإشراف التربوي.
 
 المدرسة: ${schoolName || 'غير محددة'}
-نوع الزيارة: ${visitType}
-محاور إضافية: ${briefContext || 'لا توجد'}
-الزيارات السابقة: ${JSON.stringify(previousVisits)}
+نوع الزيارة الذي حدده المشرف: ${visitType}
+محاور إضافية مختصرة من المشرف: ${briefContext || 'لا توجد'}
 
-أعد JSON يحتوي على visitType, actions, recommendations, followUp, legalReferences.`;
+الزيارات السابقة لنفس المدرسة:
+${JSON.stringify(previousVisits)}
+
+أعد JSON يحتوي على: visitType, actions, recommendations, followUp. اجعل كل قسم نصًا مهنيًا واضحًا ومتكاملًا، مع عدم اختلاق الوقائع.`;
+
   const schema = { type: 'object', properties: {
-    visitType: { type: 'string' }, actions: { type: 'string' }, recommendations: { type: 'string' }, followUp: { type: 'string' },
-    legalReferences: { type: 'array', items: { type: 'object', properties: { recommendationIndex: { type: 'integer' }, legislationTitle: { type: 'string' }, article: { type: 'string' }, paragraph: { type: 'string' }, page: { type: 'string' }, basis: { type: 'string' } }, required: ['recommendationIndex','legislationTitle','article','paragraph','page','basis'] } }
-  }, required: ['visitType','actions','recommendations','followUp','legalReferences'] };
-  const parts = [{ text: prompt }, image]; if (legalPart) parts.push(legalPart);
-  const g = await gemini(parts, schema, env, 2400); if (!g.ok) return json(g, 502);
-  const refs = arr(g.result?.legalReferences).map(x => ({ recommendationIndex: Number(x?.recommendationIndex) || 0, legislationTitle: clean(x?.legislationTitle), article: clean(x?.article), paragraph: clean(x?.paragraph), page: clean(x?.page), basis: clean(x?.basis) })).filter(x => x.recommendationIndex >= 1 && x.recommendationIndex <= 4 && x.legislationTitle && x.basis).slice(0,4);
-  const result = { visitType: clean(g.result?.visitType) || visitType, actions: clean(g.result?.actions), recommendations: clean(g.result?.recommendations), followUp: clean(g.result?.followUp), legalReferences: refs, model: GEMINI_MODEL };
+    visitType: { type: 'string' }, actions: { type: 'string' }, recommendations: { type: 'string' }, followUp: { type: 'string' }
+  }, required: ['visitType','actions','recommendations','followUp'] };
+  const g = await gemini([{ text: prompt }, image], schema, env, 2200);
+  if (!g.ok) return json(g, 502);
+  const result = {
+    visitType: clean(g.result?.visitType) || visitType,
+    actions: clean(g.result?.actions),
+    recommendations: clean(g.result?.recommendations),
+    followUp: clean(g.result?.followUp),
+    model: GEMINI_MODEL,
+  };
   if (!result.actions) return json({ ok: false, error: 'لم يتمكن المساعد من استخراج إجراءات واضحة من صورة السجل. جرّب صورة أوضح.' }, 422);
   return json({ ok: true, result });
 }
@@ -81,15 +122,61 @@ async function handleVisitDraftFromImage(request, env) {
 async function handleVisitDraft(request, env) {
   let body; try { body = await request.json(); } catch { return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400); }
   const schoolName = clean(body?.schoolName), visitType = clean(body?.visitType);
-  const actions = clean(body?.actions || body?.procedure), recommendations = clean(body?.recommendations), followUp = clean(body?.followUp);
-  if (!actions && !recommendations && !followUp) return json({ ok: false, error: 'يرجى إدخال الإجراءات أو التوصيات أو المتابعة أولًا.' }, 400);
-  const doc = chooseLegislation(body); let legalPart = null; if (doc) { try { legalPart = await legislationPart(doc); } catch (e) { console.error(e); } }
-  const legalInstruction = doc ? `المرجع المحلي المرفق هو ${doc.title}. افحصه مباشرة قبل إصدار أي سند. لا تخمن أرقام المواد أو الفقرات أو الصفحات. إذا لم يثبت المرجع الصلة، اجعل legalReferences فارغة.` : 'لا يوجد تطابق واضح مع المراجع المحلية المتاحة؛ لا تضع أي سند تشريعي.';
-  const prompt = `أنت مستشار تربوي مهني يعمل مع مشرف تربوي في المدارس العراقية. أعد أربعة بدائل مهنية لكل من الإجراءات والتوصيات والمتابعة، قابلة للمراجعة قبل الاعتماد.
+  const actions = clean(body?.actions || body?.procedure);
+  const recommendations = clean(body?.recommendations);
+  const followUp = clean(body?.followUp);
 
-القواعد: لا تخترع أسماء أو تواريخ أو أرقامًا أو نتائج أو وقائع. لا تضف سببًا للزيارة. لا تستنتج شخصية أو نية أو حالة نفسية. افصل الإجراءات الفعلية عن التوصيات والمتابعة. التوصيات والمتابعة مقترحات وليست وقائع. ${legalInstruction}
+  const legalContext =
+    normalizeLegalContext(body?.legalContext);
 
-بالنسبة للتوصيات الأربعة، أنشئ legalReferences عند وجود سند مثبت فقط. كل عنصر يحتوي recommendationIndex (1-4)، legislationTitle، article، paragraph، page، basis. رقم المادة والفقرة والصفحة يجب أن تكون مستندة مباشرة إلى الملف. لا تستخدم أرقامًا متوقعة من المعرفة العامة.
+  if (!actions && !recommendations && !followUp) {
+    return json({
+      ok: false,
+      error: 'يرجى إدخال الإجراءات أو التوصيات أو المتابعة أولًا.'
+    }, 400);
+  }
+
+  /*
+ * السند التشريعي يحدد محليًا من فهرس التشريعات
+ * المرسل من تطبيق الهاتف.
+ */
+let legalPart = null;
+
+  /*
+   * عند توفر الفهرس المحلي:
+   * التطبيق هو الذي يحدد المواد ذات الصلة،
+   * وGemini يستخدم النص المرسل فقط.
+   */
+  const localLegalText =
+    legalContextText(legalContext);
+
+  const legalInstruction =
+    legalContext.length
+      ? `اعتمد فقط على مقتطفات التشريع المحلي المرسلة من التطبيق أدناه.
+
+لا تخمن رقم مادة.
+لا تخمن رقم فقرة.
+لا تخمن رقم صفحة.
+لا تنشئ نصًا قانونيًا غير موجود في المقتطفات.
+
+إذا لم يثبت المقتطف التشريعي الصلة بالتوصية،
+اجعل legalReferences فارغة.
+
+المقتطفات التشريعية المحلية:
+
+${localLegalText}`
+      : doc
+        ? `المرجع المحلي المرفق هو ${doc.title}.
+
+افحص المرجع مباشرة قبل إصدار أي سند.
+لا تخمن أرقام المواد أو الفقرات أو الصفحات.
+إذا لم يثبت المرجع الصلة،
+اجعل legalReferences فارغة.`
+        : 'لا يوجد تطابق واضح مع المراجع المحلية المتاحة؛ لا تضع أي سند تشريعي.';
+
+  const prompt = `أنت مستشار تربوي مهني يعمل مع مشرف تربوي في المدارس العراقية. أعد مسودة مهنية قابلة للمراجعة والرفض أو التعديل قبل اعتمادها. لا تعتبر أي اقتراح واقعة فعلية إلا بعد اعتماد المشرف.
+
+القواعد: لا تخترع أسماء أو تواريخ أو أرقامًا أو نتائج أو وقائع. لا تضف سببًا للزيارة. لا تستنتج شخصية أو نية أو حالة نفسية لأي شخص. لا تكتب ملاحظات أو مشاهدات مستقلة ولا نقاط قوة أو احتياجات. افصل بدقة بين الإجراءات المتخذة فعليًا وبين التوصيات وبين المتابعة. إذا كانت المعطيات قليلة، قدّم اقتراحات مهنية عامة بصيغة مقترحة، ولا تعرضها كحقائق. نوع الزيارة كما أدخله المشرف.
 
 المدرسة: ${schoolName || 'غير محددة'}
 نوع الزيارة: ${visitType || 'غير محدد'}
@@ -97,22 +184,61 @@ async function handleVisitDraft(request, env) {
 التوصيات: ${recommendations || 'غير مدخلة'}
 المتابعة: ${followUp || 'غير مدخلة'}
 
-أعد JSON: actionsOptions, recommendationsOptions, followUpOptions, legalReferences.`;
-  const schema = { type: 'object', properties: {
-    actionsOptions: { type: 'array', items: { type: 'string' } }, recommendationsOptions: { type: 'array', items: { type: 'string' } }, followUpOptions: { type: 'array', items: { type: 'string' } },
-    legalReferences: { type: 'array', items: { type: 'object', properties: { recommendationIndex: { type: 'integer' }, legislationTitle: { type: 'string' }, article: { type: 'string' }, paragraph: { type: 'string' }, page: { type: 'string' }, basis: { type: 'string' } }, required: ['recommendationIndex','legislationTitle','article','paragraph','page','basis'] } }
-  }, required: ['actionsOptions','recommendationsOptions','followUpOptions','legalReferences'] };
-  const parts = [{ text: prompt }]; if (legalPart) parts.push(legalPart);
-  const g = await gemini(parts, schema, env, 2200); if (!g.ok) return json(g, 502);
+أعد أربعة بدائل لكل قسم: الأول مختصر، الثاني متوازن، الثالث الأكثر تفصيلًا والأفضل، الرابع صياغة بديلة. يجب أن تكون البدائل اقتراحات مهنية وليست وقائع مخترعة.`;
+  const schema = {
+  type: 'object',
+  properties: {
+    actionsOptions: {
+      type: 'array',
+      items: { type: 'string' }
+    },
+    recommendationsOptions: {
+      type: 'array',
+      items: { type: 'string' }
+    },
+    followUpOptions: {
+      type: 'array',
+      items: { type: 'string' }
+    }
+  },
+  required: [
+    'actionsOptions',
+    'recommendationsOptions',
+    'followUpOptions'
+  ]
+};
+
+  const g = await gemini([{ text: prompt }], schema, env, 1800); if (!g.ok) return json(g, 502);
   const ao = arr(g.result?.actionsOptions).map(clean).filter(Boolean).slice(0,4), ro = arr(g.result?.recommendationsOptions).map(clean).filter(Boolean).slice(0,4), fo = arr(g.result?.followUpOptions).map(clean).filter(Boolean).slice(0,4);
-  const refs = arr(g.result?.legalReferences).map(x => ({ recommendationIndex: Number(x?.recommendationIndex) || 0, legislationTitle: clean(x?.legislationTitle), article: clean(x?.article), paragraph: clean(x?.paragraph), page: clean(x?.page), basis: clean(x?.basis) })).filter(x => x.recommendationIndex >= 1 && x.recommendationIndex <= 4 && x.legislationTitle && x.basis).slice(0,4);
-  return json({ ok: true, result: { actions: ao[2] || ao[0] || actions, recommendations: ro[2] || ro[0] || recommendations, followUp: fo[2] || fo[0] || followUp, actionsOptions: ao, recommendationsOptions: ro, followUpOptions: fo, legalReferences: refs, visitType, model: GEMINI_MODEL } });
+  return json({
+  ok: true,
+  result: {
+    actions: ao[2] || ao[0] || actions,
+    recommendations: ro[2] || ro[0] || recommendations,
+    followUp: fo[2] || fo[0] || followUp,
+    actionsOptions: ao,
+    recommendationsOptions: ro,
+    followUpOptions: fo,
+    legalReferences: legalContext.map((x, i) => ({
+      recommendationIndex: i + 1,
+      legislationTitle: x.legislationTitle,
+      article: x.article,
+      paragraph: x.paragraph,
+      page: x.page,
+      text: x.text,
+      basis: 'سند محلي مستخرج من قاعدة التشريعات المرتبطة بموضوع الزيارة.'
+    })),
+    visitType,
+    model: GEMINI_MODEL
+  }
+});
 }
 
 async function handleMonthlyPlanSuggestion(request, env) {
   let body; try { body = await request.json(); } catch { return json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, 400); }
-  const month = clean(body?.month), year = clean(body?.year); const schools = arr(body?.schools), visits = arr(body?.visits), previousTasks = arr(body?.previousTasks), currentTasks = arr(body?.currentTasks);
-  const prompt = `أنت مستشار تخطيط تربوي لمشرف مدارس عراقية. اقترح أعمالًا مهنية واقعية لخطة شهرية، قابلة للمراجعة والرفض قبل اعتمادها. لا تخترع نتائج أو تواريخ أو وقائع. لا تكرر عملًا موجودًا. استفد من سجل الزيارات والأعمال السابقة للاستمرارية المهنية فقط، ولا تستنتج شخصية أو نية أو حالة نفسية. إذا كانت مدرسة لم تُزر أو توجد متابعة غير مكتملة، يمكن اقتراح عمل مناسب دون الادعاء بأنه حدث. نوّع بين زيارة، متابعة توصيات، تدقيق سجل، متابعة كتاب/تعميم، أو عمل إشرافي مناسب عندما تدعمه البيانات.
+  const month = clean(body?.month), year = clean(body?.year);
+  const schools = arr(body?.schools), visits = arr(body?.visits), previousTasks = arr(body?.previousTasks), currentTasks = arr(body?.currentTasks);
+  const prompt = `أنت مستشار تخطيط تربوي لمشرف مدارس عراقية. اقترح أعمالًا مهنية واقعية لخطة شهرية، على أن تكون الاقتراحات قابلة للمراجعة والرفض قبل اعتمادها. لا تخترع نتائج أو تواريخ أو وقائع. لا تكرر عملًا موجودًا في الأعمال الحالية. استفد من سجل الزيارات والأعمال السابقة لاستمرارية المتابعة المهنية فقط، ولا تستنتج شخصية أو نية أو حالة نفسية. إذا كانت مدرسة لم تُزر أو توجد متابعة مهنية غير مكتملة، يمكن اقتراح عمل مناسب لها دون الادعاء بأن ذلك حدث فعلاً. لا تجعل الاقتراحات كلها زيارات؛ نوّع بين زيارة، متابعة توصيات، تدقيق سجل، متابعة كتاب/تعميم، أو عمل إشرافي مناسب عندما تدعمه البيانات.
 
 الشهر: ${month} ${year}
 المدارس: ${JSON.stringify(schools)}
@@ -123,7 +249,8 @@ async function handleMonthlyPlanSuggestion(request, env) {
 أعد حتى 6 اقتراحات فقط، وكل اقتراح يحتوي schoolId من المدارس المعطاة إن كان مرتبطًا بمدرسة، title وnotes وreason. لا تضع تاريخًا مخترعًا داخل النص.`;
   const schema = { type: 'object', properties: { suggestions: { type: 'array', items: { type: 'object', properties: { schoolId: { type: 'string' }, title: { type: 'string' }, notes: { type: 'string' }, reason: { type: 'string' } }, required: ['schoolId','title','notes','reason'] } } }, required: ['suggestions'] };
   const g = await gemini([{ text: prompt }], schema, env, 1600); if (!g.ok) return json(g, 502);
-  const validSchools = new Set(schools.map(s => clean(s?.id))); const existingTitles = new Set(currentTasks.map(t => clean(t?.title).toLowerCase()));
+  const validSchools = new Set(schools.map(s => clean(s?.id)));
+  const existingTitles = new Set(currentTasks.map(t => clean(t?.title).toLowerCase()));
   const suggestions = arr(g.result?.suggestions).map(s => ({ schoolId: validSchools.has(clean(s?.schoolId)) ? clean(s.schoolId) : '', title: clean(s?.title), notes: clean(s?.notes), reason: clean(s?.reason) })).filter(s => s.title && !existingTitles.has(s.title.toLowerCase())).slice(0,6);
   return json({ ok: true, suggestions, model: GEMINI_MODEL });
 }

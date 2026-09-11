@@ -862,7 +862,7 @@ export default function SchoolDetail() {
                             ? c.success
                             : c.warning,
                         fontFamily: 'Inter_600SemiBold',
-                        fontSize: 10,
+                        fontSize: 12,
                       }}
                     >
                       {statusLabels[visit.status] ||
@@ -1185,7 +1185,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 20,
+    fontSize: 22,
   },
 
   content: {
@@ -1211,14 +1211,14 @@ const styles = StyleSheet.create({
   schoolName: {
     color: '#fff',
     fontFamily: 'Inter_700Bold',
-    fontSize: 18,
+    fontSize: 20,
     textAlign: 'center',
   },
 
   address: {
     color: '#B7D9D4',
     fontFamily: 'Inter_400Regular',
-    fontSize: 11,
+    fontSize: 13,
     marginTop: 6,
     textAlign: 'center',
   },
@@ -1235,20 +1235,20 @@ const styles = StyleSheet.create({
 
   infoValue: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
+    fontSize: 14,
     flex: 1,
     textAlign: 'left',
   },
 
   infoLabel: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 11,
+    fontSize: 13,
     marginLeft: 10,
   },
 
   section: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 16,
+    fontSize: 18,
     textAlign: 'right',
     marginTop: 18,
     marginBottom: 10,
@@ -1268,12 +1268,12 @@ const styles = StyleSheet.create({
 
   tagText: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 11,
+    fontSize: 13,
   },
 
   emptySmall: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 11,
+    fontSize: 13,
     textAlign: 'right',
   },
 
@@ -1312,7 +1312,7 @@ const styles = StyleSheet.create({
 
   staffingSpecialty: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 13,
+    fontSize: 15,
     textAlign: 'right',
     flex: 1,
   },
@@ -1325,7 +1325,7 @@ const styles = StyleSheet.create({
 
   staffingStatusText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 10,
+    fontSize: 12,
   },
 
   staffingNumbers: {
@@ -1344,12 +1344,12 @@ const styles = StyleSheet.create({
 
   staffingNumber: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 15,
+    fontSize: 16,
   },
 
   staffingNumberLabel: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 9,
+    fontSize: 11,
     marginTop: 3,
   },
 
@@ -1363,7 +1363,7 @@ const styles = StyleSheet.create({
 
   staffingMetaText: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 9,
+    fontSize: 11,
     textAlign: 'right',
   },
 
@@ -1382,7 +1382,7 @@ const styles = StyleSheet.create({
 
   addStaffingButtonText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 10,
+    fontSize: 12,
   },
 
   staffingActions: {
@@ -1429,7 +1429,7 @@ const styles = StyleSheet.create({
 
   modalTitle: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 17,
+    fontSize: 18,
     textAlign: 'right',
   },
 
@@ -1452,7 +1452,7 @@ const styles = StyleSheet.create({
 
   fieldLabel: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 11,
+    fontSize: 13,
     textAlign: 'right',
     marginBottom: 6,
   },
@@ -1464,7 +1464,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     fontFamily: 'Inter_400Regular',
-    fontSize: 12,
+    fontSize: 14,
     textAlignVertical: 'top',
   },
 
@@ -1497,7 +1497,7 @@ const styles = StyleSheet.create({
 
   modalButtonText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
+    fontSize: 14,
   },
 
   historyHeader: {
@@ -1523,7 +1523,7 @@ const styles = StyleSheet.create({
 
   countText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 11,
+    fontSize: 13,
   },
 
   summaryRow: {
@@ -1545,13 +1545,13 @@ const styles = StyleSheet.create({
 
   summaryValue: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
+    fontSize: 14,
     textAlign: 'center',
   },
 
   summaryLabel: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 9,
+    fontSize: 11,
     marginTop: 5,
     textAlign: 'center',
   },
@@ -1568,7 +1568,7 @@ const styles = StyleSheet.create({
 
   newVisitText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
+    fontSize: 14,
   },
 
   visit: {
@@ -1602,19 +1602,19 @@ const styles = StyleSheet.create({
 
   visitTitle: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
+    fontSize: 14,
     textAlign: 'right',
     flex: 1,
   },
 
   visitDate: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 10,
+    fontSize: 12,
   },
 
   visitReason: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 10,
+    fontSize: 12,
     textAlign: 'right',
     marginTop: 5,
   },
@@ -1629,7 +1629,7 @@ const styles = StyleSheet.create({
 
   visitActionHint: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 9,
+    fontSize: 11,
     flex: 1,
     textAlign: 'right',
   },
@@ -1651,13 +1651,13 @@ const styles = StyleSheet.create({
 
   emptyTitle: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 13,
+    fontSize: 15,
     marginTop: 10,
   },
 
   emptyText: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 11,
+    fontSize: 13,
     textAlign: 'center',
     marginTop: 6,
   },
