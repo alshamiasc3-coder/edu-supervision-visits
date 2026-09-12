@@ -151,6 +151,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const updateSchool = (schoolId: string, data: Omit<School, 'id'>) => setSchools(current => current.map(school => school.id === schoolId ? { ...data, id: schoolId } : school));
   const addVisit = (data: Omit<Visit, 'id'>) => setVisits(current => [{ ...data, id: id() }, ...current]);
   const updateVisit = (visitId: string, data: Omit<Visit, 'id'>) => setVisits(current => current.map(visit => visit.id === visitId ? { ...data, id: visitId } : visit));
+  const deleteVisit = (visitId: string) => setVisits(current => current.filter(visit => visit.id !== visitId));
   const addTask = (data: Omit<Task, 'id'>) => setTasks(current => [{ ...data, id: id() }, ...current]);
   const updateTask = (taskId: string, data: Omit<Task, 'id'>) => setTasks(current => current.map(task => task.id === taskId ? { ...data, id: taskId } : task));
   const deleteTask = (taskId: string) => setTasks(current => current.filter(task => task.id !== taskId));
@@ -162,7 +163,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const updateMinistryBook = (bookId: string, data: Omit<MinistryBook, 'id'>) => setMinistryBooks(current => current.map(book => book.id === bookId ? { ...data, id: bookId } : book));
   const deleteMinistryBook = (bookId: string) => setMinistryBooks(current => current.filter(book => book.id !== bookId));
 
-  const value = useMemo(() => ({ schools, visits, tasks, staffing, ministryBooks, ready, addSchool, updateSchool, addVisit, updateVisit, addTask, updateTask, deleteTask, toggleTask, addStaffing, updateStaffing, deleteStaffing, addMinistryBook, updateMinistryBook, deleteMinistryBook }), [schools, visits, tasks, staffing, ministryBooks, ready]);
+  const value = useMemo(() => ({ schools, visits, tasks, staffing, ministryBooks, ready, addSchool, updateSchool, addVisit, updateVisit, deleteVisit, addTask, updateTask, deleteTask, toggleTask, addStaffing, updateStaffing, deleteStaffing, addMinistryBook, updateMinistryBook, deleteMinistryBook }), [schools, visits, tasks, staffing, ministryBooks, ready]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
