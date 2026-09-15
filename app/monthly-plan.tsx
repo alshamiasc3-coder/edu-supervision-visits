@@ -77,6 +77,17 @@ export default function MonthlyPlanScreen() {
   const completed = monthTasks.filter(t => (t.planStatus || (t.done ? 'completed' : 'planned')) === 'completed').length;
   const inProgress = monthTasks.filter(t => (t.planStatus || (t.done ? 'completed' : 'planned')) === 'in_progress').length;
   const percentage = monthTasks.length ? Math.round(completed / monthTasks.length * 100) : 0;
+  const registerVisit = (task: { schoolId?: string; date: string }) => {
+  if (!task.schoolId) return;
+
+  router.push({
+    pathname: '/visit-form',
+    params: {
+      schoolId: task.schoolId,
+      date: task.date,
+    },
+  });
+};
 
   const changeStatus = (id: string) => {
     const task = tasks.find(t => t.id === id); if (!task) return;
@@ -248,7 +259,17 @@ export default function MonthlyPlanScreen() {
       </View>}
 
       <View style={styles.row}><View><Text style={styles.listTitle}>أعمال الخطة</Text><Text style={styles.hint}>{monthTasks.length} أعمال مسجلة لهذا الشهر</Text></View><Feather name="clipboard" size={23} color="#1f4e79" /></View>
-      {monthTasks.map(task => { const status: Status = task.planStatus || (task.done?'completed':'planned'); return <View key={task.id} style={styles.item}><View style={styles.row}><View style={{flex:1}}><Text style={styles.itemTitle}>{task.title}</Text><Text style={styles.itemNotes}>{task.notes}</Text>{task.schoolId ? <Text style={styles.schoolName}>المدرسة: {schools.find(s=>s.id===task.schoolId)?.name || 'غير محددة'}</Text> : null}</View><Feather name={status==='completed'?'check-circle':status==='in_progress'?'clock':'calendar'} size={22} color="#1f4e79" /></View><View style={styles.row}><Pressable style={[styles.statusButton,status==='completed'&&styles.done,status==='in_progress'&&styles.running]} onPress={()=>changeStatus(task.id)}><Text style={styles.statusText}>{status==='completed'?'مكتملة':status==='in_progress'?'قيد التنفيذ':'مخططة'}</Text></Pressable><Pressable onPress={()=>Alert.alert('حذف المهمة','هل أنت متأكد من حذفها؟',[{text:'إلغاء',style:'cancel'},{text:'حذف',style:'destructive',onPress:()=>deleteTask(task.id)}])}><Feather name="trash-2" size={18} color="#c53030" /></Pressable></View></View>})}
+      {monthTasks.map(task => { const status: Status = task.planStatus || (task.done?'completed':'planned'); return <View key={task.id} style={styles.item}><View style={styles.row}><View style={{flex:1}}><Text style={styles.itemTitle}>{task.title}</Text><Text style={styles.itemNotes}>{task.notes}</Text>{task.schoolId ? <Text style={styles.schoolName}>المدرسة: {schools.find(s=>s.id===task.schoolId)?.name || 'غير محددة'}</Text> : null}</View><Feather name={status==='completed'?'check-circle':status==='in_progress'?'clock':'calendar'} size={22} color="#1f4e79" /></View><View style={styles.row}>
+      {task.schoolId ? (
+  <Pressable
+    onPress={() => registerVisit(task)}
+    style={styles.visitButton}
+  >
+    <Feather name="camera" size={16} color="#fff" />
+    <Text style={styles.visitButtonText}>تسجيل زيارة</Text>
+  </Pressable>
+) : null}
+      <Pressable style={[styles.statusButton,status==='completed'&&styles.done,status==='in_progress'&&styles.running]} onPress={()=>changeStatus(task.id)}><Text style={styles.statusText}>{status==='completed'?'مكتملة':status==='in_progress'?'قيد التنفيذ':'مخططة'}</Text></Pressable><Pressable onPress={()=>Alert.alert('حذف المهمة','هل أنت متأكد من حذفها؟',[{text:'إلغاء',style:'cancel'},{text:'حذف',style:'destructive',onPress:()=>deleteTask(task.id)}])}><Feather name="trash-2" size={18} color="#c53030" /></Pressable></View></View>})}
     </KeyboardAwareScrollViewCompat>
   </View>;
 }
@@ -261,4 +282,4 @@ dayWarning:{borderRadius:10,padding:10,marginTop:8,flexDirection:'row-reverse',a
 normalWarning:{backgroundColor:'#fffaf0'},
 invalidWarning:{backgroundColor:'#fff5f5'},
 dayWarningText:{flex:1,color:'#765b00',fontSize:12,lineHeight:19,textAlign:'right',fontWeight:'600'},
-invalidWarningText:{color:'#c53030'},listTitle:{fontSize:20,fontWeight:'800',textAlign:'right',color:'#1f2937'},item:{backgroundColor:'#fff',borderRadius:15,padding:15,marginTop:10},itemTitle:{fontSize:16,fontWeight:'800',textAlign:'right',color:'#1f2937',lineHeight:22},itemNotes:{fontSize:13,color:'#3f4b57',textAlign:'right',lineHeight:20,marginTop:5},schoolName:{fontSize:12,color:'#1f4e79',textAlign:'right',marginTop:6,fontWeight:'700'},statusButton:{minWidth:95,height:34,borderRadius:9,backgroundColor:'#718096',alignItems:'center',justifyContent:'center',paddingHorizontal:10},running:{backgroundColor:'#b7791f'},done:{backgroundColor:'#2f855a'},statusText:{color:'#fff',fontSize:12,fontWeight:'800'}});
+invalidWarningText:{color:'#c53030'},visitButton:{flexDirection:'row-reverse',alignItems:'center',gap:5,backgroundColor:'#1f4e79',borderRadius:9,paddingHorizontal:10,paddingVertical:8},visitButtonText:{color:'#fff',fontFamily:'Inter_700Bold',fontSize:11},listTitle:{fontSize:20,fontWeight:'800',textAlign:'right',color:'#1f2937'},item:{backgroundColor:'#fff',borderRadius:15,padding:15,marginTop:10},itemTitle:{fontSize:16,fontWeight:'800',textAlign:'right',color:'#1f2937',lineHeight:22},itemNotes:{fontSize:13,color:'#3f4b57',textAlign:'right',lineHeight:20,marginTop:5},schoolName:{fontSize:12,color:'#1f4e79',textAlign:'right',marginTop:6,fontWeight:'700'},statusButton:{minWidth:95,height:34,borderRadius:9,backgroundColor:'#718096',alignItems:'center',justifyContent:'center',paddingHorizontal:10},running:{backgroundColor:'#b7791f'},done:{backgroundColor:'#2f855a'},statusText:{color:'#fff',fontSize:12,fontWeight:'800'}});

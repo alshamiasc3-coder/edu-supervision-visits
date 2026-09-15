@@ -57,14 +57,14 @@ export default function VisitDetails() {
 
         <Pressable onPress={()=>router.push({pathname:'/visit-form',params:{visitId:visit.id}})} style={[styles.action,{backgroundColor:c.primary}]}><Feather name="edit-2" size={18} color={c.primaryForeground}/><Text style={{color:c.primaryForeground,fontFamily:'Inter_700Bold'}}>تعديل بيانات الزيارة</Text></Pressable>
 
-       {visit.status === 'completed' && (
+       {(visit.status === 'completed' || visit.status === 'planned' || visit.status === 'postponed') && (
   <Pressable
     onPress={confirmDelete}
     style={[styles.action, { backgroundColor: c.destructive, marginTop: 10 }]}
   >
     <Feather name="trash-2" size={18} color={c.destructiveForeground} />
     <Text style={{ color: c.destructiveForeground, fontFamily: 'Inter_700Bold' }}>
-      حذف الزيارة المكتملة
+      حذف الزيارة
     </Text>
   </Pressable>
 )}
