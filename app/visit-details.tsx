@@ -12,15 +12,14 @@ export default function VisitDetails() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { visitId } = useLocalSearchParams<{ visitId?: string }>();
-  const { visits, schools, staffing } = useStore();
+  const { visits, schools, staffing, deleteVisit } = useStore();
   const visit = visits.find(v => v.id === visitId);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
-
-  if (!visit) return <View style={[styles.page,{backgroundColor:c.background}]}><Header title="تفاصيل الزيارة" subtitle="الزيارة غير موجودة" c={c} insets={insets}/><View style={styles.center}><Feather name="alert-circle" size={32} color={c.primary}/><Text style={[styles.notFound,{color:c.foreground}]}>لم يتم العثور على الزيارة</Text><Pressable onPress={()=>router.back()} style={[styles.action,{backgroundColor:c.primary}]}><Text style={{color:c.primaryForeground,fontFamily:'Inter_700Bold'}}>العودة إلى الزيارات</Text></Pressable></View></View>;
-
+  const schoolStaffing = visit
+        ? staffing.filter(s => s.schoolId === visit.schoolId).sort((a,b) => a.specialty.localeCompare(b.specialty))
+        : [];  const totals = useMemo(() => schoolStaffing.reduce((x,s)=>{const r=Number(s.required)||0;const cur=Number(s.current)||0;x.required+=r;x.current+=cur;if(cur<r)x.vacant+=r-cur;else if(cur>r)x.surplus+=cur-r;else x.complete+=1;return x;},{required:0,current:0,vacant:0,surplus:0,complete:0}),[schoolStaffing]);
+        if (!visit) return <View style={[styles.page,{backgroundColor:c.background}]}><Header title="تفاصيل الزيارة" subtitle="الزيارة غير موجودة" c={c} insets={insets}/><View style={styles.center}><Feather name="alert-circle" size={32} color={c.primary}/><Text style={[styles.notFound,{color:c.foreground}]}>لم يتم العثور على الزيارة</Text><Pressable onPress={()=>router.back()} style={[styles.action,{backgroundColor:c.primary}]}><Text style={{color:c.primaryForeground,fontFamily:'Inter_700Bold'}}>العودة إلى الزيارات</Text></Pressable></View></View>;
   const school = schools.find(s => s.id === visit.schoolId);
-  const schoolStaffing = staffing.filter(s => s.schoolId === visit.schoolId).sort((a,b)=>a.specialty.localeCompare(b.specialty));
-  const totals = useMemo(() => schoolStaffing.reduce((x,s)=>{const r=Number(s.required)||0;const cur=Number(s.current)||0;x.required+=r;x.current+=cur;if(cur<r)x.vacant+=r-cur;else if(cur>r)x.surplus+=cur-r;else x.complete+=1;return x;},{required:0,current:0,vacant:0,surplus:0,complete:0}),[schoolStaffing]);
   const photos = Array.from(new Set([...(Array.isArray((visit as any).photoUris)?(visit as any).photoUris:[]), visit.photoUri].filter(Boolean).map(String)));
   const statusColor = visit.status==='completed'?c.success:visit.status==='postponed'?c.warning:c.primary;
   const statusBg = visit.status==='completed'?'#E5F4EC':visit.status==='postponed'?'#FFF2DD':c.secondary;
@@ -31,7 +30,23 @@ export default function VisitDetails() {
       if (Platform.OS==='web') { const w=window.open('','_blank','width=900,height=1200'); if(!w){Alert.alert('تعذر فتح الطباعة','يرجى السماح بالنوافذ المنبثقة.');return;} w.document.write(html);w.document.close();setTimeout(()=>w.print(),400); } else await Print.printAsync({html});
     } catch(e) { console.error(e); Alert.alert('تعذر الطباعة','حدث خطأ أثناء إعداد التقرير.'); }
   };
-
+  const confirmDelete = () => {
+  Alert.alert(
+    'حذف الزيارة',
+    'هل أنت متأكد من حذف هذه الزيارة المكتملة؟ سيتم حذفها من سجل الزيارات.',
+    [
+      { text: 'إلغاء', style: 'cancel' },
+      {
+        text: 'حذف الزيارة',
+        style: 'destructive',
+        onPress: () => {
+          deleteVisit(visit.id);
+          router.back();
+        },
+      },
+    ],
+  );
+};
   return <View style={[styles.page,{backgroundColor:c.background}]}>
     <Header title="تفاصيل الزيارة" subtitle="عرض الزيارة المحفوظة" c={c} insets={insets}/>
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom:insets.bottom+35}}>
@@ -41,6 +56,18 @@ export default function VisitDetails() {
         <View style={styles.section}><SectionHeader title="الملاك والاحتياج في المدرسة" icon="users" c={c}/>{schoolStaffing.length?<><View style={styles.totalRow}><Total value={totals.vacant} label="الشاغر" tone={c.warning} c={c}/><Total value={totals.surplus} label="الفيض" tone={c.warning} c={c}/><Total value={totals.complete} label="المكتمل" tone={c.success} c={c}/></View><View style={[styles.staffTable,{backgroundColor:c.card,borderColor:c.border}]}>{schoolStaffing.map((s,i)=>{const r=Number(s.required)||0;const cur=Number(s.current)||0;const d=Math.abs(r-cur);const label=cur<r?'شاغر':cur>r?'فيض':'مكتمل';return <View key={s.id} style={[styles.staffRow,{borderBottomColor:c.border,backgroundColor:i%2? 'rgba(127,127,127,0.035)':c.card}]}><Text style={[styles.staffSpecialty,{color:c.foreground}]}>{s.specialty}</Text><Text style={[styles.staffValue,{color:c.foreground}]}>{r}</Text><Text style={[styles.staffValue,{color:c.foreground}]}>{cur}</Text><Text style={[styles.staffValue,{color:d?c.warning:c.success}]}>{d}</Text><Text style={[styles.staffStatus,{color:d?c.warning:c.success}]}>{label}</Text></View>})}</View></>:<Text style={[styles.empty,{color:c.mutedForeground}]}>لا توجد بيانات ملاك مسجلة.</Text>}</View>
 
         <Pressable onPress={()=>router.push({pathname:'/visit-form',params:{visitId:visit.id}})} style={[styles.action,{backgroundColor:c.primary}]}><Feather name="edit-2" size={18} color={c.primaryForeground}/><Text style={{color:c.primaryForeground,fontFamily:'Inter_700Bold'}}>تعديل بيانات الزيارة</Text></Pressable>
+
+       {visit.status === 'completed' && (
+  <Pressable
+    onPress={confirmDelete}
+    style={[styles.action, { backgroundColor: c.destructive, marginTop: 10 }]}
+  >
+    <Feather name="trash-2" size={18} color={c.destructiveForeground} />
+    <Text style={{ color: c.destructiveForeground, fontFamily: 'Inter_700Bold' }}>
+      حذف الزيارة المكتملة
+    </Text>
+  </Pressable>
+)}
         <Pressable onPress={printReport} style={[styles.aiButton,{backgroundColor:c.navy}]}><View style={[styles.aiIcon,{backgroundColor:c.accent}]}><Feather name="printer" size={21} color={c.navy}/></View><View style={{flex:1}}><Text style={styles.aiTitle}>طباعة تقرير الزيارة</Text><Text style={styles.aiSubtitle}>طباعة التقرير في صفحة PDF</Text></View><Feather name="chevron-left" size={20} color="#FFF"/></Pressable>
 
         <Detail title="سبب الزيارة" icon="help-circle" value={visit.reason||'لم يتم إدخال سبب الزيارة.'} c={c}/>
